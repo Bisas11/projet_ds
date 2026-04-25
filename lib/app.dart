@@ -14,6 +14,8 @@ import 'screens/face_detection_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/about_screen.dart';
+import 'screens/landing_screen.dart';
+import 'screens/photo_assistant_screen.dart';
 
 /// Root widget: configures MaterialApp with theme, locale, routes, and auth gate.
 class VisionAIApp extends StatelessWidget {
@@ -24,7 +26,7 @@ class VisionAIApp extends StatelessWidget {
     final settings = Provider.of<SettingsProvider>(context);
 
     return MaterialApp(
-      title: 'VisionAI',
+      title: 'PhotoCoach AI',
       debugShowCheckedModeBanner: false,
 
       // ── Theme ──
@@ -51,7 +53,7 @@ class VisionAIApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
 
-      // ── Auth gate: show login or home based on auth state ──
+      // ── Auth gate: show landing or home based on auth state ──
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -62,18 +64,19 @@ class VisionAIApp extends StatelessWidget {
             );
           }
 
-          // User is signed in → show home
+          // User is signed in → skip landing, go straight to home
           if (snapshot.hasData) {
             return const HomeScreen();
           }
 
-          // User is not signed in → show login
-          return const LoginScreen();
+          // User is not signed in → show landing page
+          return const LandingScreen();
         },
       ),
 
       // ── Named routes for in-app navigation ──
       routes: {
+        '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/forgot-password': (context) => const ForgotPasswordScreen(),
         '/home': (context) => const HomeScreen(),
@@ -83,6 +86,7 @@ class VisionAIApp extends StatelessWidget {
         '/history': (context) => const HistoryScreen(),
         '/settings': (context) => const SettingsScreen(),
         '/about': (context) => const AboutScreen(),
+        '/photo-assistant': (context) => const PhotoAssistantScreen(),
       },
     );
   }

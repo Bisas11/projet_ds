@@ -15,7 +15,7 @@ class AboutScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         children: [
           // App icon / title
-          const Icon(Icons.visibility, size: 80, color: Colors.blue),
+          const Icon(Icons.camera_enhance, size: 80, color: Colors.blue),
           const SizedBox(height: 16),
           Text(
             l10n.appTitle,
@@ -31,13 +31,31 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 32),
 
           // App information
-          Text(l10n.appInfo, style: Theme.of(context).textTheme.bodyLarge),
+          Card(
+            elevation: 0,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                l10n.appInfo,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(height: 1.6),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
 
           // API information
           const Divider(),
           const SizedBox(height: 16),
-          Text('Google ML Kit', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Why On-Device AI?',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 8),
           Text(l10n.apiInfo, style: Theme.of(context).textTheme.bodyLarge),
           const SizedBox(height: 24),
@@ -46,20 +64,32 @@ class AboutScreen extends StatelessWidget {
           const Divider(),
           const SizedBox(height: 16),
           Text(
-            'Services ML Kit',
+            'AI Features & What They Do',
             style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Three Google ML Kit models work together to coach your photos:',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
           ),
           const SizedBox(height: 12),
           _ServiceTile(
-            icon: Icons.label,
+            icon: Icons.image_search_rounded,
             title: l10n.imageLabeling,
             description: l10n.imageLabelingDesc,
           ),
           _ServiceTile(
-            icon: Icons.face,
+            icon: Icons.crop_free_rounded,
             title: l10n.selfieSegmentation,
             description: l10n.selfieSegmentationDesc,
-          )
+          ),
+          _ServiceTile(
+            icon: Icons.sentiment_satisfied_alt_rounded,
+            title: l10n.faceDetection,
+            description: l10n.faceDetectionDesc,
+          ),
         ],
       ),
     );

@@ -103,7 +103,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'VisionAI'**
+  /// **'PhotoCoach AI'**
   String get appTitle;
 
   /// No description provided for @home.
@@ -115,7 +115,7 @@ abstract class AppLocalizations {
   /// No description provided for @welcome.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to VisionAI'**
+  /// **'Welcome to PhotoCoach AI'**
   String get welcome;
 
   /// No description provided for @chooseFeature.
@@ -133,7 +133,7 @@ abstract class AppLocalizations {
   /// No description provided for @imageLabelingDesc.
   ///
   /// In en, this message translates to:
-  /// **'Identify objects, animals, places in images'**
+  /// **'Recognizes scenes & objects for smarter AI photo context'**
   String get imageLabelingDesc;
 
   /// No description provided for @selfieSegmentation.
@@ -145,7 +145,7 @@ abstract class AppLocalizations {
   /// No description provided for @selfieSegmentationDesc.
   ///
   /// In en, this message translates to:
-  /// **'Isolate person from background in selfies'**
+  /// **'Measures how well you fill the frame for perfect composition'**
   String get selfieSegmentationDesc;
 
   /// No description provided for @faceDetection.
@@ -157,7 +157,7 @@ abstract class AppLocalizations {
   /// No description provided for @faceDetectionDesc.
   ///
   /// In en, this message translates to:
-  /// **'Detect faces with landmarks and expressions'**
+  /// **'Reads your smile & eye contact for expression-based tips'**
   String get faceDetectionDesc;
 
   /// No description provided for @facesDetected.
@@ -415,13 +415,13 @@ abstract class AppLocalizations {
   /// No description provided for @appInfo.
   ///
   /// In en, this message translates to:
-  /// **'VisionAI is a Flutter application that uses Google ML Kit for visual intelligence features including image labeling, selfie segmentation, and face detection.'**
+  /// **'PhotoCoach AI helps you take better photos by scoring composition, detecting expressions, and delivering instant AI-powered tips — all on your device.'**
   String get appInfo;
 
   /// No description provided for @apiInfo.
   ///
   /// In en, this message translates to:
-  /// **'Powered by Google ML Kit — on-device machine learning for mobile apps. ML Kit processes images locally on the device without requiring an internet connection.'**
+  /// **'Powered by Google ML Kit — on-device AI that keeps your photos 100% private. No uploads, no cloud, instant results.'**
   String get apiInfo;
 
   /// No description provided for @personDetected.
@@ -429,6 +429,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Person detected'**
   String get personDetected;
+
+  /// No description provided for @testSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Test Sound'**
+  String get testSound;
+
+  /// No description provided for @testVibration.
+  ///
+  /// In en, this message translates to:
+  /// **'Test Vibration'**
+  String get testVibration;
+
+  /// No description provided for @testNotification.
+  ///
+  /// In en, this message translates to:
+  /// **'Test Notification'**
+  String get testNotification;
 
   /// No description provided for @savedSuccessfully.
   ///
@@ -537,6 +555,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Profile'**
   String get profile;
+
+  /// No description provided for @landingTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Take Better Photos with AI'**
+  String get landingTagline;
+
+  /// No description provided for @landingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'PhotoCoach AI scores your composition, reads expressions, and gives you instant tips for your best shot — all on your device.'**
+  String get landingDescription;
+
+  /// No description provided for @landingServicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How PhotoCoach AI helps you'**
+  String get landingServicesTitle;
+
+  /// No description provided for @landingGetStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Taking Better Photos'**
+  String get landingGetStarted;
+
+  /// No description provided for @mlServicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'ML Kit Services'**
+  String get mlServicesTitle;
+
+  /// No description provided for @analyzePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyze My Photo'**
+  String get analyzePhoto;
+
+  /// No description provided for @photoReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo Report'**
+  String get photoReport;
+
+  /// No description provided for @aiTips.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Tips'**
+  String get aiTips;
+
+  /// No description provided for @advancedTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced Tools'**
+  String get advancedTools;
+
+  /// No description provided for @photoScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo Score'**
+  String get photoScore;
+
+  /// No description provided for @analyzing.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyzing...'**
+  String get analyzing;
+
+  /// No description provided for @tapPhotoToStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a photo to get AI feedback on quality, composition and more.'**
+  String get tapPhotoToStart;
+
+  /// No description provided for @sceneContext.
+  ///
+  /// In en, this message translates to:
+  /// **'Scene Context'**
+  String get sceneContext;
 }
 
 class _AppLocalizationsDelegate

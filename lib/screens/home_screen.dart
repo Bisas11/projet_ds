@@ -92,8 +92,12 @@ class HomeScreen extends StatelessWidget {
                 style: const TextStyle(color: Colors.red),
               ),
               onTap: () async {
-                Navigator.pop(context);
+                Navigator.pop(context); // close drawer
                 await AuthService().signOut();
+                // Pop to root so the StreamBuilder's rebuilt LandingScreen is revealed
+                if (context.mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
               },
             ),
           ],
@@ -107,6 +111,99 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(l10n.chooseFeature),
           const SizedBox(height: 24),
+
+          // ── Primary CTA ──────────────────────────────────────────────
+          Card(
+            elevation: 0,
+            color: Theme.of(context).colorScheme.primaryContainer,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.auto_awesome,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.analyzePhoto,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              l10n.tapPhotoToStart,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer
+                                        .withOpacity(0.7),
+                                    height: 1.4,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () =>
+                        Navigator.pushNamed(context, '/photo-assistant'),
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: Text(l10n.analyzePhoto),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // ── Advanced Tools section header ────────────────────────────
+          Row(
+            children: [
+              const Icon(Icons.build_outlined, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                l10n.advancedTools,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  letterSpacing: 0.8,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
 
           // Image Labeling card
           _FeatureCard(

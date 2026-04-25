@@ -41,7 +41,11 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
-      // Auth state stream in app.dart will automatically show HomeScreen
+      // Replace only the login route with home, keeping the StreamBuilder's
+      // home: route beneath so logout can pop back to it later.
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
     } on FirebaseAuthException catch (e) {
       setState(() {
         _errorMessage = e.message;

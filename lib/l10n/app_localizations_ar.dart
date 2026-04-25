@@ -9,13 +9,13 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
-  String get appTitle => 'VisionAI';
+  String get appTitle => 'PhotoCoach AI';
 
   @override
   String get home => 'الرئيسية';
 
   @override
-  String get welcome => 'مرحبًا بكم في VisionAI';
+  String get welcome => 'مرحبًا بـ PhotoCoach AI';
 
   @override
   String get chooseFeature => 'اختر ميزة';
@@ -24,19 +24,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get imageLabeling => 'تصنيف الصور';
 
   @override
-  String get imageLabelingDesc => 'تحديد الأشياء والحيوانات والأماكن في الصور';
+  String get imageLabelingDesc => 'يتعرف على المشاهد والأشياء لتحليل ذكي أفضل';
 
   @override
   String get selfieSegmentation => 'تقسيم السيلفي';
 
   @override
-  String get selfieSegmentationDesc => 'عزل الشخص عن الخلفية في صور السيلفي';
+  String get selfieSegmentationDesc =>
+      'يقيس مدى ملء الإطار لتحقيق التركيبة المثالية';
 
   @override
   String get faceDetection => 'كشف الوجوه';
 
   @override
-  String get faceDetectionDesc => 'كشف الوجوه مع المعالم والتعبيرات';
+  String get faceDetectionDesc =>
+      'يقرأ ابتسامتك وتعبيرك لتقديم نصائح مبنية على تعابيرك';
 
   @override
   String get facesDetected => 'وجوه مكتشفة';
@@ -166,14 +168,23 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get appInfo =>
-      'VisionAI هو تطبيق Flutter يستخدم Google ML Kit لميزات الذكاء البصري بما في ذلك تصنيف الصور وتقسيم السيلفي وكشف الوجوه.';
+      'يساعدك PhotoCoach AI على التقاط صور أفضل من خلال تقييم التركيبة وكشف التعبيرات وتقديم نصائح فورية مدعومة بالذكاء الاصطناعي.';
 
   @override
   String get apiInfo =>
-      'مدعوم بواسطة Google ML Kit — التعلم الآلي على الجهاز لتطبيقات الهاتف المحمول. يعالج ML Kit الصور محليًا على الجهاز دون الحاجة إلى اتصال بالإنترنت.';
+      'مدعوم بـ Google ML Kit — ذكاء اصطناعي على الجهاز يحافظ على خصوصية صورك بالكامل. لا رفع، لا سحابة، نتائج فورية.';
 
   @override
   String get personDetected => 'تم اكتشاف شخص';
+
+  @override
+  String get testSound => 'اختبار الصوت';
+
+  @override
+  String get testVibration => 'اختبار الاهتزاز';
+
+  @override
+  String get testNotification => 'اختبار الإشعار';
 
   @override
   String get savedSuccessfully => 'تم الحفظ بنجاح';
@@ -230,4 +241,45 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profile => 'الملف الشخصي';
+
+  @override
+  String get landingTagline => 'التقط صورًا أفضل بالذكاء الاصطناعي';
+
+  @override
+  String get landingDescription =>
+      'يقيّم PhotoCoach AI تركيبة صورتك ويقرأ تعابيرك ويقدم نصائح فورية لأفضل لقطة — على جهازك.';
+
+  @override
+  String get landingServicesTitle => 'كيف يساعدك PhotoCoach AI';
+
+  @override
+  String get landingGetStarted => 'ابدأ بالتقاط صور أفضل';
+
+  @override
+  String get mlServicesTitle => 'خدمات ML Kit';
+
+  @override
+  String get analyzePhoto => 'تحليل صورتي';
+
+  @override
+  String get photoReport => 'تقرير الصورة';
+
+  @override
+  String get aiTips => 'نصائح الذكاء الاصطناعي';
+
+  @override
+  String get advancedTools => 'أدوات متقدمة';
+
+  @override
+  String get photoScore => 'نقاط الصورة';
+
+  @override
+  String get analyzing => 'جاري التحليل...';
+
+  @override
+  String get tapPhotoToStart =>
+      'اختر صورة للحصول على تغذية راجعة من الذكاء الاصطناعي.';
+
+  @override
+  String get sceneContext => 'سياق المشهد';
 }

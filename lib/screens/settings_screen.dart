@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/settings_provider.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 
 /// Settings screen: theme, language, sound, vibration, notifications, logout.
 class SettingsScreen extends StatelessWidget {
@@ -58,6 +60,19 @@ class SettingsScreen extends StatelessWidget {
             value: settings.soundEnabled,
             onChanged: (value) => settings.setSoundEnabled(value),
           ),
+          Padding(
+            padding: const EdgeInsets.only(left: 72, right: 16, bottom: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.volume_up, size: 16),
+                label: Text(l10n.testSound),
+                onPressed: settings.soundEnabled
+                    ? () => SystemSound.play(SystemSoundType.click)
+                    : null,
+              ),
+            ),
+          ),
           const Divider(),
 
           // ── Vibration ──
@@ -66,6 +81,19 @@ class SettingsScreen extends StatelessWidget {
             secondary: const Icon(Icons.vibration),
             value: settings.vibrationEnabled,
             onChanged: (value) => settings.setVibrationEnabled(value),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 72, right: 16, bottom: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.vibration, size: 16),
+                label: Text(l10n.testVibration),
+                onPressed: settings.vibrationEnabled
+                    ? () => HapticFeedback.heavyImpact()
+                    : null,
+              ),
+            ),
           ),
           const Divider(),
 
@@ -76,6 +104,19 @@ class SettingsScreen extends StatelessWidget {
             value: settings.notificationsEnabled,
             onChanged: (value) => settings.setNotificationsEnabled(value),
           ),
+          Padding(
+            padding: const EdgeInsets.only(left: 72, right: 16, bottom: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.send, size: 16),
+                label: Text(l10n.testNotification),
+                onPressed: settings.notificationsEnabled
+                    ? () => NotificationService().showTestNotification()
+                    : null,
+              ),
+            ),
+          ),
           const Divider(),
 
           // ── Logout ──
@@ -84,8 +125,8 @@ class SettingsScreen extends StatelessWidget {
             title: Text(l10n.logout, style: const TextStyle(color: Colors.red)),
             onTap: () async {
               await AuthService().signOut();
+              // Pop to root so the StreamBuilder's rebuilt LandingScreen is revealed
               if (context.mounted) {
-                // Pop all routes back to root so the StreamBuilder shows LoginScreen
                 Navigator.of(context).popUntil((route) => route.isFirst);
               }
             },

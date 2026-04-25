@@ -56,4 +56,23 @@ class NotificationService {
     await init();
     await _plugin.cancelAll();
   }
+
+  /// Show an immediate test notification to verify the notification system works.
+  Future<void> showTestNotification() async {
+    await init();
+    await _plugin.show(
+      1,
+      'VisionAI',
+      'Notifications are working correctly!',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_reminder',
+          'Daily Reminder',
+          channelDescription: 'Reminds you to use the app daily',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+    );
+  }
 }

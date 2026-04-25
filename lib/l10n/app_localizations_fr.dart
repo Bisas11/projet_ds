@@ -9,13 +9,13 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
-  String get appTitle => 'VisionAI';
+  String get appTitle => 'PhotoCoach AI';
 
   @override
   String get home => 'Accueil';
 
   @override
-  String get welcome => 'Bienvenue sur VisionAI';
+  String get welcome => 'Bienvenue sur PhotoCoach AI';
 
   @override
   String get chooseFeature => 'Choisissez une fonctionnalité';
@@ -25,21 +25,21 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get imageLabelingDesc =>
-      'Identifier les objets, animaux, lieux dans les images';
+      'Reconnaît les scènes et objets pour un contexte IA plus précis';
 
   @override
   String get selfieSegmentation => 'Segmentation de selfie';
 
   @override
   String get selfieSegmentationDesc =>
-      'Isoler la personne de l\'arrière-plan dans les selfies';
+      'Mesure votre cadrage pour une composition parfaite';
 
   @override
   String get faceDetection => 'Détection de visages';
 
   @override
   String get faceDetectionDesc =>
-      'Détecter les visages avec repères et expressions';
+      'Analyse votre sourire et regard pour des conseils personnalisés';
 
   @override
   String get facesDetected => 'visages détectés';
@@ -169,14 +169,23 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get appInfo =>
-      'VisionAI est une application Flutter qui utilise Google ML Kit pour des fonctionnalités d\'intelligence visuelle, incluant l\'étiquetage d\'images, la segmentation de selfies et la détection de visages.';
+      'PhotoCoach AI vous aide à prendre de meilleures photos en évaluant la composition, en détectant les expressions et en proposant des conseils IA instantanés — tout sur votre appareil.';
 
   @override
   String get apiInfo =>
-      'Propulsé par Google ML Kit — apprentissage automatique sur l\'appareil pour les applications mobiles. ML Kit traite les images localement sans nécessiter de connexion Internet.';
+      'Propulsé par Google ML Kit — IA sur l\'appareil pour une confidentialité totale. Aucun téléchargement, aucun cloud, résultats instantanés.';
 
   @override
   String get personDetected => 'Personne détectée';
+
+  @override
+  String get testSound => 'Tester le son';
+
+  @override
+  String get testVibration => 'Tester la vibration';
+
+  @override
+  String get testNotification => 'Tester la notification';
 
   @override
   String get savedSuccessfully => 'Enregistré avec succès';
@@ -235,4 +244,45 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get profile => 'Profil';
+
+  @override
+  String get landingTagline => 'Prenez de meilleures photos avec l\'IA';
+
+  @override
+  String get landingDescription =>
+      'PhotoCoach AI évalue votre composition, lit vos expressions et vous donne des conseils instantanés pour votre meilleure prise de vue — sur votre appareil.';
+
+  @override
+  String get landingServicesTitle => 'Comment PhotoCoach AI vous aide';
+
+  @override
+  String get landingGetStarted => 'Commencer à mieux photographier';
+
+  @override
+  String get mlServicesTitle => 'Services ML Kit';
+
+  @override
+  String get analyzePhoto => 'Analyser ma photo';
+
+  @override
+  String get photoReport => 'Rapport photo';
+
+  @override
+  String get aiTips => 'Conseils IA';
+
+  @override
+  String get advancedTools => 'Outils avancés';
+
+  @override
+  String get photoScore => 'Score photo';
+
+  @override
+  String get analyzing => 'Analyse en cours...';
+
+  @override
+  String get tapPhotoToStart =>
+      'Choisissez une photo pour obtenir des conseils IA sur la qualité et la composition.';
+
+  @override
+  String get sceneContext => 'Contexte de la scène';
 }
