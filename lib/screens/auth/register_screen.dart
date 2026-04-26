@@ -66,97 +66,165 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.register)),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 32),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 32),
 
-              // Email field
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  labelText: l10n.email,
-                  border: const OutlineInputBorder(),
+                // ── Branding ─────────────────────────────────────────────
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.camera_enhance_rounded,
+                      size: 48,
+                      color: colorScheme.primary,
+                    ),
+                  ),
                 ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty || !value.contains('@')) {
-                    return l10n.invalidEmail;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Password field
-              TextFormField(
-                controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: l10n.password,
-                  border: const OutlineInputBorder(),
-                ),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.length < 6) {
-                    return l10n.passwordTooShort;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Confirm password field
-              TextFormField(
-                controller: _confirmPasswordController,
-                decoration: InputDecoration(
-                  labelText: l10n.confirmPassword,
-                  border: const OutlineInputBorder(),
-                ),
-                obscureText: true,
-                validator: (value) {
-                  if (value != _passwordController.text) {
-                    return l10n.passwordsDoNotMatch;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Error message
-              if (_errorMessage != null) ...[
+                const SizedBox(height: 20),
                 Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.red),
+                  l10n.appTitle,
                   textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
-                const SizedBox(height: 16),
-              ],
+                const SizedBox(height: 6),
+                Text(
+                  l10n.register,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
+                const SizedBox(height: 40),
 
-              // Register button or loading indicator
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                      onPressed: _signUp,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(l10n.signUp),
+                // ── Email ─────────────────────────────────────────────────
+                TextFormField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    labelText: l10n.email,
+                    prefixIcon: const Icon(Icons.email_outlined),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null ||
+                        value.isEmpty ||
+                        !value.contains('@')) {
+                      return l10n.invalidEmail;
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+
+                // ── Password ──────────────────────────────────────────────
+                TextFormField(
+                  controller: _passwordController,
+                  decoration: InputDecoration(
+                    labelText: l10n.password,
+                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                  ),
+                  obscureText: true,
+                  validator: (value) {
+                    if (value == null || value.length < 6) {
+                      return l10n.passwordTooShort;
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+
+                // ── Confirm password ──────────────────────────────────────
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  decoration: InputDecoration(
+                    labelText: l10n.confirmPassword,
+                    prefixIcon: const Icon(Icons.lock_reset_rounded),
+                  ),
+                  obscureText: true,
+                  validator: (value) {
+                    if (value != _passwordController.text) {
+                      return l10n.passwordsDoNotMatch;
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // ── Error ─────────────────────────────────────────────────
+                if (_errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: colorScheme.error,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                              color: colorScheme.onErrorContainer,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // ── Register button ───────────────────────────────────────
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : FilledButton.icon(
+                        onPressed: _signUp,
+                        icon: const Icon(Icons.person_add_rounded),
+                        label: Text(l10n.signUp),
+                      ),
+                const SizedBox(height: 20),
+
+                // ── Login link ─────────────────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      l10n.haveAccount,
+                      style: TextStyle(
+                        color: colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ),
-              const SizedBox(height: 16),
-
-              // Link back to login
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.haveAccount),
-              ),
-            ],
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(l10n.signIn),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -108,8 +108,13 @@ class HomeScreen extends StatelessWidget {
         children: [
           // Welcome section
           Text(l10n.welcome, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          Text(l10n.chooseFeature),
+          const SizedBox(height: 6),
+          Text(
+            l10n.chooseFeature,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
+          ),
           const SizedBox(height: 24),
 
           // ── Primary CTA ──────────────────────────────────────────────
@@ -209,7 +214,8 @@ class HomeScreen extends StatelessWidget {
           _FeatureCard(
             title: l10n.imageLabeling,
             description: l10n.imageLabelingDesc,
-            icon: Icons.label,
+            icon: Icons.image_search_rounded,
+            iconColor: Colors.indigo,
             route: '/image-labeling',
           ),
           const SizedBox(height: 12),
@@ -218,7 +224,8 @@ class HomeScreen extends StatelessWidget {
           _FeatureCard(
             title: l10n.selfieSegmentation,
             description: l10n.selfieSegmentationDesc,
-            icon: Icons.face,
+            icon: Icons.crop_free_rounded,
+            iconColor: Colors.teal,
             route: '/selfie-segmentation',
           ),
           const SizedBox(height: 12),
@@ -227,7 +234,8 @@ class HomeScreen extends StatelessWidget {
           _FeatureCard(
             title: l10n.faceDetection,
             description: l10n.faceDetectionDesc,
-            icon: Icons.face_retouching_natural,
+            icon: Icons.sentiment_satisfied_alt_rounded,
+            iconColor: Colors.deepOrange,
             route: '/face-detection',
           ),
         ],
@@ -242,23 +250,63 @@ class _FeatureCard extends StatelessWidget {
   final String description;
   final IconData icon;
   final String route;
+  final Color? iconColor;
 
   const _FeatureCard({
     required this.title,
     required this.description,
     required this.icon,
     required this.route,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color = iconColor ?? Theme.of(context).colorScheme.primary;
     return Card(
-      child: ListTile(
-        leading: Icon(icon, size: 40),
-        title: Text(title),
-        subtitle: Text(description),
-        trailing: const Icon(Icons.arrow_forward_ios),
+      child: InkWell(
         onTap: () => Navigator.pushNamed(context, route),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.6),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withOpacity(0.35),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
