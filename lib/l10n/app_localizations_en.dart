@@ -283,4 +283,74 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sceneContext => 'Scene Context';
+
+  @override
+  String get feedback => 'Feedback';
+
+  @override
+  String get account => 'Account';
+
+  @override
+  String get accountInfo => 'Account Info';
+
+  @override
+  String get whyOnDeviceAi => 'Why On-Device AI?';
+
+  @override
+  String get aiFeatures => 'AI Features & What They Do';
+
+  @override
+  String get mlKitModelsDesc =>
+      'Three Google ML Kit models work together to coach your photos:';
+
+  @override
+  String get displayName => 'Display Name';
+
+  @override
+  String get changePhoto => 'Change Photo';
+
+  @override
+  String get saveChanges => 'Save Changes';
+
+  @override
+  String get saving => 'Saving…';
+
+  @override
+  String get nameRequired => 'Name cannot be empty';
+
+  @override
+  String get segmentationResult => 'Segmentation Result';
+
+  @override
+  String get subjectTooSmall => 'Subject too small — try moving closer.';
+
+  @override
+  String get subjectTooClose => 'Subject too close — try stepping back.';
+
+  @override
+  String get goodFraming => 'Good framing — subject fills the frame well.';
+
+  @override
+  String get subjectCoverage => 'Subject Coverage';
+
+  @override
+  String get topSceneLabels => 'Top Scene Labels';
+
+  @override
+  String get analysisSummary => 'Analysis Summary';
+
+  @override
+  String get scoreExcellent => 'Excellent';
+
+  @override
+  String get scoreGood => 'Good';
+
+  @override
+  String get scoreFair => 'Fair';
+
+  @override
+  String get scoreNeedsWork => 'Needs Work';
+
+  @override
+  String get person => 'person';
 }

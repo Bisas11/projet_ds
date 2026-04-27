@@ -282,4 +282,74 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get sceneContext => 'سياق المشهد';
+
+  @override
+  String get feedback => 'ملاحظات';
+
+  @override
+  String get account => 'الحساب';
+
+  @override
+  String get accountInfo => 'معلومات الحساب';
+
+  @override
+  String get whyOnDeviceAi => 'لماذا الذكاء الاصطناعي على الجهاز؟';
+
+  @override
+  String get aiFeatures => 'ميزات الذكاء الاصطناعي ودورها';
+
+  @override
+  String get mlKitModelsDesc =>
+      'ثلاثة نماذج من Google ML Kit تعمل معًا لتدريب صورك:';
+
+  @override
+  String get displayName => 'الاسم المعروض';
+
+  @override
+  String get changePhoto => 'تغيير الصورة';
+
+  @override
+  String get saveChanges => 'حفظ التغييرات';
+
+  @override
+  String get saving => 'جارٍ الحفظ…';
+
+  @override
+  String get nameRequired => 'لا يمكن أن يكون الاسم فارغًا';
+
+  @override
+  String get segmentationResult => 'نتيجة التقسيم';
+
+  @override
+  String get subjectTooSmall => 'الموضوع صغير جدًا — حاول الاقتراب.';
+
+  @override
+  String get subjectTooClose => 'الموضوع قريب جدًا — تراجع للخلف.';
+
+  @override
+  String get goodFraming => 'تأطير جيد — الموضوع يملأ الإطار جيدًا.';
+
+  @override
+  String get subjectCoverage => 'تغطية الموضوع';
+
+  @override
+  String get topSceneLabels => 'أبرز تصنيفات المشهد';
+
+  @override
+  String get analysisSummary => 'ملخص التحليل';
+
+  @override
+  String get scoreExcellent => 'ممتاز';
+
+  @override
+  String get scoreGood => 'جيد';
+
+  @override
+  String get scoreFair => 'مقبول';
+
+  @override
+  String get scoreNeedsWork => 'يحتاج تحسين';
+
+  @override
+  String get person => 'شخص';
 }

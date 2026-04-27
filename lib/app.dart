@@ -17,6 +17,7 @@ import 'screens/settings_screen.dart';
 import 'screens/about_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/photo_assistant_screen.dart';
+import 'screens/profile_screen.dart';
 
 /// Root widget: configures MaterialApp with theme, locale, routes, and auth gate.
 class VisionAIApp extends StatelessWidget {
@@ -240,6 +241,7 @@ class VisionAIApp extends StatelessWidget {
         '/settings': (context) => const SettingsScreen(),
         '/about': (context) => const AboutScreen(),
         '/photo-assistant': (context) => const PhotoAssistantScreen(),
+        '/profile': (context) => const ProfileScreen(),
       },
     );
   }

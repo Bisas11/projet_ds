@@ -633,6 +633,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Scene Context'**
   String get sceneContext;
+
+  /// No description provided for @feedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback'**
+  String get feedback;
+
+  /// No description provided for @account.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get account;
+
+  /// No description provided for @accountInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Account Info'**
+  String get accountInfo;
+
+  /// No description provided for @whyOnDeviceAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Why On-Device AI?'**
+  String get whyOnDeviceAi;
+
+  /// No description provided for @aiFeatures.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Features & What They Do'**
+  String get aiFeatures;
+
+  /// No description provided for @mlKitModelsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Three Google ML Kit models work together to coach your photos:'**
+  String get mlKitModelsDesc;
+
+  /// No description provided for @displayName.
+  ///
+  /// In en, this message translates to:
+  /// **'Display Name'**
+  String get displayName;
+
+  /// No description provided for @changePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Photo'**
+  String get changePhoto;
+
+  /// No description provided for @saveChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Changes'**
+  String get saveChanges;
+
+  /// No description provided for @saving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get saving;
+
+  /// No description provided for @nameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name cannot be empty'**
+  String get nameRequired;
+
+  /// No description provided for @segmentationResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Segmentation Result'**
+  String get segmentationResult;
+
+  /// No description provided for @subjectTooSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject too small — try moving closer.'**
+  String get subjectTooSmall;
+
+  /// No description provided for @subjectTooClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject too close — try stepping back.'**
+  String get subjectTooClose;
+
+  /// No description provided for @goodFraming.
+  ///
+  /// In en, this message translates to:
+  /// **'Good framing — subject fills the frame well.'**
+  String get goodFraming;
+
+  /// No description provided for @subjectCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject Coverage'**
+  String get subjectCoverage;
+
+  /// No description provided for @topSceneLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Top Scene Labels'**
+  String get topSceneLabels;
+
+  /// No description provided for @analysisSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Analysis Summary'**
+  String get analysisSummary;
+
+  /// No description provided for @scoreExcellent.
+  ///
+  /// In en, this message translates to:
+  /// **'Excellent'**
+  String get scoreExcellent;
+
+  /// No description provided for @scoreGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get scoreGood;
+
+  /// No description provided for @scoreFair.
+  ///
+  /// In en, this message translates to:
+  /// **'Fair'**
+  String get scoreFair;
+
+  /// No description provided for @scoreNeedsWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs Work'**
+  String get scoreNeedsWork;
+
+  /// No description provided for @person.
+  ///
+  /// In en, this message translates to:
+  /// **'person'**
+  String get person;
 }
 
 class _AppLocalizationsDelegate

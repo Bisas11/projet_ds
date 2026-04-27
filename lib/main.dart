@@ -27,7 +27,10 @@ void main() async {
   }
 
   // Enable immersive fullscreen — hides system nav bar until user swipes
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.manual,
+    overlays: [SystemUiOverlay.top], // keep status bar, hide nav bar
+  );
 
   runApp(
     ChangeNotifierProvider.value(

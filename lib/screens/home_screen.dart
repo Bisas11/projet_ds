@@ -1,17 +1,81 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../l10n/app_localizations.dart';
 import '../services/auth_service.dart';
 
+/// Shared avatar widget — shows profile photo if available, else initials.
+Widget _buildAvatarWidget(
+  User? user,
+  double size, {
+  Color? initialsBackground,
+}) {
+  final photoURL = user?.photoURL;
+  final _rawInitials = user?.displayName?.trim().isNotEmpty == true
+      ? user!.displayName!
+      : user?.email?.trim().isNotEmpty == true
+      ? user!.email!
+      : 'P';
+  final initials = _rawInitials[0].toUpperCase();
+  if (photoURL != null && photoURL.isNotEmpty) {
+    if (!photoURL.startsWith('http')) {
+      final file = File(photoURL);
+      if (file.existsSync()) {
+        return CircleAvatar(radius: size / 2, backgroundImage: FileImage(file));
+      }
+    } else {
+      return CircleAvatar(
+        radius: size / 2,
+        backgroundImage: NetworkImage(photoURL),
+      );
+    }
+  }
+  return CircleAvatar(
+    radius: size / 2,
+    backgroundColor: initialsBackground ?? const Color(0xFF4F46E5),
+    child: Text(
+      initials,
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: size * 0.40,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
+}
+
 /// Home screen: main hub with navigation cards to each ML feature.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  User? _user;
+  late final StreamSubscription<User?> _userSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _user = FirebaseAuth.instance.currentUser;
+    // userChanges() fires on displayName / photoURL updates
+    _userSub = FirebaseAuth.instance.userChanges().listen((u) {
+      if (mounted) setState(() => _user = u);
+    });
+  }
+
+  @override
+  void dispose() {
+    _userSub.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-
-    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       appBar: AppBar(
@@ -32,9 +96,16 @@ class HomeScreen extends StatelessWidget {
             onPressed: () => Navigator.pushNamed(context, '/settings'),
             tooltip: l10n.settings,
           ),
+          // Padding(
+          //   padding: const EdgeInsets.only(right: 12),
+          //   child: GestureDetector(
+          //     onTap: () => Navigator.pushNamed(context, '/profile'),
+          //     child: _buildAvatarWidget(_user, 36),
+          //   ),
+          // ),
         ],
       ),
-      drawer: _AppDrawer(l10n: l10n, user: user),
+      drawer: _AppDrawer(l10n: l10n, user: _user),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -65,7 +136,9 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        user?.email?.split('@').first ?? 'Photographer',
+                        _user?.displayName ??
+                            _user?.email?.split('@').first ??
+                            'Photographer',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -85,21 +158,20 @@ class HomeScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Center(
-                    child: Text(
-                      (user?.email ?? 'P')[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/profile'),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.45),
+                        width: 2,
                       ),
+                    ),
+                    child: _buildAvatarWidget(
+                      _user,
+                      46,
+                      initialsBackground: Colors.white.withOpacity(0.25),
                     ),
                   ),
                 ),
@@ -325,14 +397,16 @@ class _FeatureCard extends StatelessWidget {
 
 class _AppDrawer extends StatelessWidget {
   final AppLocalizations l10n;
-  final dynamic user;
+  final User? user;
 
   const _AppDrawer({required this.l10n, required this.user});
 
   @override
   Widget build(BuildContext context) {
-    final initials = (user?.email ?? 'P')[0].toUpperCase();
     final email = user?.email ?? '';
+    final displayName =
+        user?.displayName ??
+        (email.isNotEmpty ? email.split('@').first : l10n.appTitle);
 
     return Drawer(
       child: Column(
@@ -357,30 +431,22 @@ class _AppDrawer extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
+                    shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1.5,
+                      color: Colors.white.withOpacity(0.45),
+                      width: 2.5,
                     ),
                   ),
-                  child: Center(
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                  child: _buildAvatarWidget(
+                    user,
+                    56,
+                    initialsBackground: Colors.white.withOpacity(0.25),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  email.isNotEmpty ? email.split('@').first : l10n.appTitle,
+                  displayName,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 17,
@@ -409,6 +475,14 @@ class _AppDrawer extends StatelessWidget {
                   icon: Icons.home_rounded,
                   label: l10n.home,
                   onTap: () => Navigator.pop(context),
+                ),
+                _DrawerItem(
+                  icon: Icons.person_rounded,
+                  label: l10n.profile,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/profile');
+                  },
                 ),
                 _DrawerItem(
                   icon: Icons.history_rounded,

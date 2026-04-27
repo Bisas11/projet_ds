@@ -12,6 +12,1210 @@
 1. [Project Overview](#1-project-overview)
 2. [Architecture](#2-architecture)
 3. [UI Layer (Flutter Widgets)](#3-ui-layer-flutter-widgets)
+4. [Design System](#4-design-system)
+5. [Firebase Integration](#5-firebase-integration)
+6. [ML Kit Integration](#6-ml-kit-integration)
+7. [Photo Assistant Feature](#7-photo-assistant-feature)
+8. [Dependencies & Packages](#8-dependencies--packages)
+9. [Business Logic & Data Flow](#9-business-logic--data-flow)
+10. [Security & Best Practices](#10-security--best-practices)
+11. [Configuration & Environment](#11-configuration--environment)
+12. [Performance & Optimization](#12-performance--optimization)
+13. [Developer Guide](#13-developer-guide)
+
+---
+
+## 1. Project Overview
+
+**VisionAI** is a Flutter mobile application that leverages **Google ML Kit** for on-device visual intelligence. The app provides three core machine-learning features — image labeling, selfie segmentation, and face detection — all running locally on the device without requiring an internet connection (except for authentication). A fourth **Photo Assistant** screen combines all three into a single unified analysis that computes a photo quality score and generates actionable tips.
+
+### Purpose
+
+Built as an academic project fulfilling a specification ("Cahier de charges") that requires:
+- Integration of at least **2 ML Kit services** (this project uses 3)
+- Firebase Authentication
+- Notification system
+- Dark/light theme support
+- Sound & vibration feedback
+- Multilingual support (French, English, Arabic)
+- History/persistence of scan results
+- Settings management
+
+### Key Features
+
+| Feature | Description |
+|---|---|
+| **Image Labeling** | Identifies objects, animals, and places in photographs |
+| **Selfie Segmentation** | Isolates a person from the background with a green mask overlay |
+| **Face Detection** | Detects faces with landmarks, contours, expressions (smile, eye state), and head pose |
+| **Photo Assistant** | Runs all three ML analyses concurrently on one photo; outputs a 0–100 quality score and actionable tips |
+| **Scan History** | SQLite-backed persistence of all scan results with image thumbnails |
+| **Authentication** | Email/password auth with registration and password reset via Firebase |
+| **Settings** | Theme, language, sound, vibration, and notification preferences persisted locally |
+| **Notifications** | Daily local push reminder to use the app |
+| **Multilingual** | Full support for English, French, and Arabic (RTL) |
+| **Immersive fullscreen** | System navigation bar hidden by default; reappears on swipe |
+
+---
+
+## 2. Architecture
+
+### 2.1 Architectural Pattern
+
+The project follows a **Service-Oriented Architecture** with **Provider** for state management. It is not a strict MVVM or Clean Architecture implementation, but rather a pragmatic layered approach well-suited for a medium-complexity Flutter app:
+
+```
+┌─────────────────────────────────────────────┐
+│                  UI Layer                    │
+│         (Screens / Widgets)                  │
+│  StatelessWidget  │  StatefulWidget          │
+├─────────────────────────────────────────────┤
+│              State Management                │
+│      SettingsProvider (ChangeNotifier)        │
+│      via Provider package                    │
+├─────────────────────────────────────────────┤
+│              Service Layer                   │
+│  AuthService │ MLService │ DatabaseService   │
+│  NotificationService │ SoundService          │
+│  PhotoFeedbackService                        │
+├─────────────────────────────────────────────┤
+│           Data / External Layer              │
+│  Firebase Auth │ ML Kit │ SQLite │ SharedPrefs│
+└─────────────────────────────────────────────┘
+```
+
+**Why this pattern?** The project avoids over-engineering. For a feature-limited ML demo app, a full Clean Architecture (repositories, use cases, entities) would be overkill. The service layer provides enough decoupling between UI and business logic while keeping the codebase concise and readable.
+
+### 2.2 Folder Structure
+
+```
+lib/
+├── main.dart                    # Entry point: Firebase init, provider setup, system UI, app launch
+├── app.dart                     # Root MaterialApp: theme (design system), locale, routes, auth gate
+├── firebase_options.dart        # FlutterFire CLI-generated Firebase config
+├── l10n/                        # Localization
+│   ├── app_en.arb               # English translations (template)
+│   ├── app_fr.arb               # French translations
+│   ├── app_ar.arb               # Arabic translations
+│   ├── app_localizations.dart   # Generated abstract class
+│   ├── app_localizations_en.dart
+│   ├── app_localizations_fr.dart
+│   └── app_localizations_ar.dart
+├── models/
+│   └── scan_result.dart         # Data model for saved ML scan results
+├── providers/
+│   └── settings_provider.dart   # App-wide settings (theme, locale, toggles)
+├── screens/
+│   ├── auth/
+│   │   ├── login_screen.dart
+│   │   ├── register_screen.dart
+│   │   └── forgot_password_screen.dart
+│   ├── landing_screen.dart      # NEW: first screen for unauthenticated users
+│   ├── home_screen.dart         # Main hub; includes _AppDrawer, _DrawerItem, _FeatureCard
+│   ├── photo_assistant_screen.dart  # NEW: combined ML analysis + score + tips
+│   ├── image_labeling_screen.dart
+│   ├── selfie_segmentation_screen.dart
+│   ├── face_detection_screen.dart
+│   ├── history_screen.dart
+│   ├── settings_screen.dart
+│   └── about_screen.dart
+├── services/
+│   ├── auth_service.dart            # Firebase Auth wrapper
+│   ├── ml_service.dart              # ML Kit operations (labeling, segmentation, face)
+│   ├── database_service.dart        # SQLite CRUD for scan history
+│   ├── notification_service.dart    # Local notification scheduling
+│   ├── sound_service.dart           # System sound & haptic feedback
+│   └── photo_feedback_service.dart  # NEW: score computation + tip generation logic
+└── widgets/
+    ├── result_card.dart   # Reusable result card with optional confidence progress bar
+    └── ml_widgets.dart    # NEW: shared ML UI widgets (MlEmptyState, MlLoadingState, MlSectionHeader)
+```
+
+### 2.3 Entry Point Flow
+
+```
+main()
+  ─→ WidgetsFlutterBinding.ensureInitialized()
+  ─→ Firebase.initializeApp()
+  ─→ SettingsProvider.init()       (load SharedPreferences)
+  ─→ NotificationService.init()    (setup notification channel)
+  ─→ scheduleDailyReminder()       (if notifications enabled)
+  ─→ SystemChrome.setEnabledSystemUIMode(manual, overlays:[top])
+       → hides bottom nav bar, keeps status bar
+  ─→ runApp(ChangeNotifierProvider → VisionAIApp)
+```
+
+### 2.4 Dependency Flow
+
+```
+Screens ──→ Services (AuthService, MLService, DatabaseService, SoundService, PhotoFeedbackService)
+Screens ──→ Provider (SettingsProvider via Provider.of<>)
+Services ──→ External SDKs (Firebase Auth, ML Kit, SQLite, SharedPreferences)
+Models ←──→ DatabaseService (ScanResult ↔ SQLite rows)
+```
+
+Key design decision: **Services are stateless utilities** (static methods on `MLService`, `SoundService`, `PhotoFeedbackService`) or **singletons** (`DatabaseService`, `NotificationService`). This avoids dependency injection complexity while ensuring shared state (DB instance, notification plugin) isn't duplicated.
+
+---
+
+## 3. UI Layer (Flutter Widgets)
+
+### 3.1 Screen Map
+
+| Screen | Route | Type | Description |
+|---|---|---|---|
+| `LandingScreen` | *home* (unauthenticated) | `StatelessWidget` | Full-bleed gradient hero with feature badges and CTA |
+| `LoginScreen` | `/login` | `StatefulWidget` | Email/password login with form validation |
+| `RegisterScreen` | `/register` | `StatefulWidget` | New account registration with password confirmation |
+| `ForgotPasswordScreen` | `/forgot-password` | `StatefulWidget` | Password reset via email |
+| `HomeScreen` | `/home` | `StatelessWidget` | Main hub with gradient welcome banner, feature cards & nav drawer |
+| `PhotoAssistantScreen` | `/photo-assistant` | `StatefulWidget` | Combined ML analysis: score + tips |
+| `ImageLabelingScreen` | `/image-labeling` | `StatefulWidget` | Pick image → label objects → save results |
+| `SelfieSegmentationScreen` | `/selfie-segmentation` | `StatefulWidget` | Pick selfie → segment person → show overlay |
+| `FaceDetectionScreen` | `/face-detection` | `StatefulWidget` | Pick image → detect faces → show details |
+| `HistoryScreen` | `/history` | `StatefulWidget` | Browse & delete saved scan results |
+| `SettingsScreen` | `/settings` | `StatelessWidget` | Theme, language, sound, vibration, notifications |
+| `AboutScreen` | `/about` | `StatelessWidget` | App info & ML Kit API description |
+
+### 3.2 Widget Hierarchy
+
+```
+VisionAIApp (MaterialApp)
+├── StreamBuilder<User?> (Auth gate)
+│   ├── LandingScreen (unauthenticated)
+│   │   ├── Stack: gradient Positioned background + _DecorCircle overlays
+│   │   ├── Hero section: icon + title + tagline + _FeatureBadge chips
+│   │   └── Bottom card: _ServiceCard × 3 + FilledButton CTA + TextButton login link
+│   └── HomeScreen (authenticated)
+│       ├── AppBar
+│       ├── _AppDrawer
+│       │   ├── Gradient header (avatar initial + email)
+│       │   ├── _DrawerItem × 4 (Home, History, Settings, About)
+│       │   └── _DrawerItem Logout (red)
+│       └── ListView
+│           ├── Gradient welcome banner (user avatar + email)
+│           ├── Gradient CTA card → PhotoAssistantScreen
+│           ├── Section header (Advanced Tools)
+│           └── _FeatureCard × 3 (Labeling, Segmentation, Face Detection)
+├── PhotoAssistantScreen
+│   ├── FilledButton (camera) + FilledButton.tonal (gallery)
+│   ├── Image preview (ClipRRect r=20)
+│   ├── Score card (animated CircularProgressIndicator + color coding)
+│   ├── Tips list (color-coded by TipType: good/warning/suggestion/info)
+│   └── Scene chips (detected labels)
+├── ImageLabelingScreen
+│   ├── FilledButton (camera) + FilledButton.tonal (gallery)
+│   ├── Image.file (ClipRRect r=20, BoxFit.cover)
+│   ├── MlEmptyState (when no image picked)
+│   ├── MlLoadingState (while processing)
+│   ├── MlSectionHeader + List<ResultCard with confidence bar>
+│   └── FilledButton save
+├── SelfieSegmentationScreen
+│   ├── FilledButton (camera) + FilledButton.tonal (gallery)
+│   ├── Stack [Image.file + Opacity(mask)] (ClipRRect r=20)
+│   ├── MlEmptyState / MlLoadingState
+│   ├── Circular percentage indicator card
+│   └── FilledButton save
+├── FaceDetectionScreen
+│   ├── FilledButton (camera) + FilledButton.tonal (gallery)
+│   ├── Image.file (ClipRRect r=20)
+│   ├── MlEmptyState / MlLoadingState
+│   ├── Per-face Card (styled header + _InfoRow attributes)
+│   └── FilledButton save
+└── HistoryScreen
+    ├── _HistoryEmptyState (gradient icon bubble when list empty)
+    └── ListView: history cards
+        ├── Thumbnail (64×64, borderRadius 12)
+        ├── Type badge chip (color-coded)
+        ├── Result summary + formatted timestamp
+        └── Delete IconButton
+```
+
+### 3.3 State Management
+
+**Primary:** `Provider` package with `ChangeNotifierProvider`.
+
+Only one provider exists — `SettingsProvider` — which manages global app-wide settings (theme, locale, sound, vibration, notifications). It is created in `main()` before the widget tree and injected via `ChangeNotifierProvider.value`.
+
+**Per-screen state:** Each ML feature screen uses local `setState()` to manage:
+- `_imageFile` — the currently picked image
+- `_isProcessing` / `_isAnalyzing` — loading indicator flag
+- ML results (`_labels`, `_maskOverlay`, `_faces`, `_score`, `_tips`)
+
+**Why `setState` over more providers?** The ML processing state is screen-local and ephemeral. It doesn't need to be shared across widgets or survive navigation. Using `setState` here is the simplest correct approach.
+
+### 3.4 Navigation System
+
+The app uses **named routes** defined in `MaterialApp.routes`:
+
+```dart
+routes: {
+  '/login':                   (_) => const LoginScreen(),
+  '/register':                (_) => const RegisterScreen(),
+  '/forgot-password':         (_) => const ForgotPasswordScreen(),
+  '/home':                    (_) => const HomeScreen(),
+  '/image-labeling':          (_) => const ImageLabelingScreen(),
+  '/selfie-segmentation':     (_) => const SelfieSegmentationScreen(),
+  '/face-detection':          (_) => const FaceDetectionScreen(),
+  '/history':                 (_) => const HistoryScreen(),
+  '/settings':                (_) => const SettingsScreen(),
+  '/about':                   (_) => const AboutScreen(),
+  '/photo-assistant':         (_) => const PhotoAssistantScreen(),
+}
+```
+
+The **auth gate** is implemented not via routes but via a `StreamBuilder<User?>` on `FirebaseAuth.instance.authStateChanges()` as the `home` property. This ensures:
+- When a user signs in → the stream emits the user → `HomeScreen` is shown
+- When a user signs out → the stream emits `null` → `LandingScreen` is shown
+- No explicit navigation is needed on login/logout
+
+**`LandingScreen` routing:** When the user taps the CTA, `_onGetStarted()` checks `FirebaseAuth.instance.currentUser`. If already signed in, it pushes `/home`. Otherwise it pushes `/login`.
+
+### 3.5 Reusable Widgets
+
+| Widget | File | Description |
+|---|---|---|
+| `ResultCard` | `widgets/result_card.dart` | Card with title, optional subtitle, icon, and optional `confidence` (0.0–1.0) progress bar |
+| `MlEmptyState` | `widgets/ml_widgets.dart` | Centered icon-in-circle + message for when no image is picked yet |
+| `MlLoadingState` | `widgets/ml_widgets.dart` | Sized `CircularProgressIndicator` + text for ML processing state |
+| `MlSectionHeader` | `widgets/ml_widgets.dart` | Left accent bar + icon + label; used above result lists |
+| `_FeatureCard` | `home_screen.dart` (private) | Navigation card with color icon bubble, title, description, chevron |
+| `_AppDrawer` | `home_screen.dart` (private) | Full navigation drawer with gradient header, nav tiles, logout |
+| `_DrawerItem` | `home_screen.dart` (private) | Individual styled ListTile for the drawer |
+| `_InfoRow` | `face_detection_screen.dart` (private) | Icon + label + value row for face attribute display |
+| `_HistoryEmptyState` | `history_screen.dart` (private) | Gradient icon bubble + message for empty history |
+
+---
+
+## 4. Design System
+
+The app uses a centralized design system defined in `app.dart` via a custom `_buildTheme(Brightness)` factory. All visual tokens are defined as `static const` on `VisionAIApp`.
+
+### 4.1 Color Tokens
+
+| Token | Value | Usage |
+|---|---|---|
+| `_primary` | `Color(0xFF4F46E5)` — Indigo-600 | Buttons, icons, accent, progress bars |
+| `_secondary` | `Color(0xFF06B6D4)` — Cyan-500 | `ColorScheme.secondary`, gradient endpoints |
+| `_bgLight` | `Color(0xFFF5F6FA)` | Scaffold background in light mode |
+| `_bgDark` | `Color(0xFF0F172A)` — Slate-900 | Scaffold background in dark mode |
+| `_surfaceDark` | `Color(0xFF1E293B)` — Slate-800 | Card and input fill in dark mode |
+
+**Gradient used throughout the app:**
+```dart
+LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFF0EA5E9)])
+```
+Applied on: landing hero background, home welcome banner, CTA card, drawer header.
+
+**Per-feature accent colors** (consistent across ML screens, history badges, and section headers):
+
+| Feature | Color |
+|---|---|
+| Image Labeling | `Color(0xFF6366F1)` — Indigo-500 |
+| Selfie Segmentation | `Color(0xFF0D9488)` — Teal-600 |
+| Face Detection | `Color(0xFFF97316)` — Orange-500 |
+
+### 4.2 Typography
+
+All text uses **Inter** via `google_fonts: ^6.2.1`:
+
+```dart
+final textTheme = GoogleFonts.interTextTheme(base.textTheme).copyWith(
+  displaySmall:  GoogleFonts.inter(fontWeight: FontWeight.w800, letterSpacing: -0.5),
+  titleLarge:    GoogleFonts.inter(fontWeight: FontWeight.w600),
+  titleMedium:   GoogleFonts.inter(fontWeight: FontWeight.w600),
+  titleSmall:    GoogleFonts.inter(fontWeight: FontWeight.w600),
+  labelLarge:    GoogleFonts.inter(fontWeight: FontWeight.w600, letterSpacing: 0.2),
+  bodyLarge:     GoogleFonts.inter(fontWeight: FontWeight.w400, height: 1.5),
+  bodyMedium:    GoogleFonts.inter(fontWeight: FontWeight.w400, height: 1.4),
+  bodySmall:     GoogleFonts.inter(fontWeight: FontWeight.w400),
+);
+```
+
+### 4.3 Component Overrides
+
+All component defaults are set in `ThemeData` so individual screens do not need to repeat styling:
+
+| Component | Override |
+|---|---|
+| `AppBarTheme` | Zero elevation, scaffold background color, Inter 20/600 title |
+| `CardTheme` | Zero elevation, `borderRadius: 20`, white / `_surfaceDark` fill |
+| `InputDecorationTheme` | Filled, white / `_surfaceDark`, `borderRadius: 14`, no default border line, primary border on focus |
+| `FilledButtonTheme` | `_primary` bg, white fg, `Size(88,52)`, `borderRadius: 14`, Inter 15/600 |
+| `ElevatedButtonTheme` | `Size(88,48)`, `borderRadius: 14`, Inter 14/600 |
+| `OutlinedButtonTheme` | `Size(88,48)`, `borderRadius: 14`, Inter 14/600 |
+| `ChipTheme` | `borderRadius: 8`, no surface tint |
+| `DrawerTheme` | `borderRadius: topRight/bottomRight 24`, white / `_surfaceDark` fill |
+| `SnackBarTheme` | Floating, `borderRadius: 12`, dark slate background, white Inter 14 text |
+
+### 4.4 Immersive System UI
+
+Set in `main()` before `runApp`:
+
+```dart
+await SystemChrome.setEnabledSystemUIMode(
+  SystemUiMode.manual,
+  overlays: [SystemUiOverlay.top], // status bar visible, navigation bar hidden
+);
+```
+
+The Android system navigation bar (Back/Home/Recents) is hidden by default. Users can swipe from the bottom to reveal it temporarily, after which it hides again automatically (standard Android behavior with `WindowInsetsController`). The status bar (top) remains visible.
+
+---
+
+## 5. Firebase Integration
+
+### 5.1 Firebase Services Used
+
+| Service | Package | Purpose |
+|---|---|---|
+| **Firebase Core** | `firebase_core: ^3.13.0` | Required initialization layer |
+| **Firebase Auth** | `firebase_auth: ^5.5.2` | Email/password authentication |
+
+The project does **not** use Firestore, Realtime Database, Cloud Storage, Cloud Functions, Hosting, Analytics, or Cloud Messaging. Data persistence is handled locally via SQLite, and notifications are local (not push via FCM).
+
+### 5.2 Firebase Configuration
+
+**Project ID:** `projetmobile-abcd6`
+
+Configuration is generated by the **FlutterFire CLI** and stored in:
+
+| File | Purpose |
+|---|---|
+| `lib/firebase_options.dart` | Dart-side Firebase options (API key, app ID, project ID) |
+| `android/app/google-services.json` | Android-side Google Services config |
+| `android/settings.gradle.kts` | Applies `com.google.gms.google-services` plugin v4.3.15 |
+| `android/app/build.gradle.kts` | Applies `com.google.gms.google-services` plugin |
+| `firebase.json` | Root FlutterFire CLI metadata |
+
+Only the **Android** platform is configured. iOS, macOS, web, Windows, and Linux throw `UnsupportedError` in `firebase_options.dart`.
+
+### 5.3 Firebase Initialization
+
+```dart
+// main.dart
+await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+```
+
+This is called once in `main()` before any Firebase service is used.
+
+### 5.4 Authentication Flow
+
+```
+┌──────────────┐     ┌──────────────┐     ┌───────────┐
+│ LandingScreen│────→│ AuthService  │────→│ Firebase  │
+│ / LoginScreen│     │  .signIn()   │     │   Auth    │
+└──────────────┘     └──────────────┘     └───────────┘
+                                                │
+                                                ▼
+                                        authStateChanges()
+                                                │
+                                                ▼
+                                       ┌────────────────┐
+                                       │  StreamBuilder  │
+                                       │  in app.dart    │
+                                       └────────────────┘
+                                         │           │
+                                      User?       null?
+                                         ▼           ▼
+                                    HomeScreen   LandingScreen
+```
+
+**`AuthService`** (`services/auth_service.dart`) is a thin wrapper around `FirebaseAuth`:
+
+| Method | Firebase Method | Description |
+|---|---|---|
+| `signIn(email, password)` | `signInWithEmailAndPassword` | Standard login |
+| `signUp(email, password)` | `createUserWithEmailAndPassword` | New registration |
+| `sendPasswordResetEmail(email)` | `sendPasswordResetEmail` | Forgot password |
+| `signOut()` | `signOut` | Logout |
+| `currentUser` | `.currentUser` | Getter for current user |
+| `authStateChanges` | `.authStateChanges()` | Reactive auth state stream |
+
+**Auth guard pattern:** The `StreamBuilder` in `app.dart` acts as a reactive gate. There is no route guard or middleware — the stream inherently controls which screen is shown. Signing in changes the stream value, which triggers a rebuild showing `HomeScreen`. Signing out reverses this, showing `LandingScreen`.
+
+**Error handling in auth screens:** `FirebaseAuthException` is caught and displayed inline as `_errorMessage`. A loading indicator replaces the submit button during async operations.
+
+### 5.5 Form Validation
+
+| Field | Validation Rule |
+|---|---|
+| Email | Non-empty and contains `@` |
+| Password | Minimum 6 characters |
+| Confirm Password | Must match the password field |
+
+---
+
+## 6. ML Kit Integration
+
+### 6.1 ML Kit Features Used
+
+| Feature | Package | ML Kit API |
+|---|---|---|
+| **Image Labeling** | `google_mlkit_image_labeling: ^0.14.2` | `ImageLabeler` |
+| **Selfie Segmentation** | `google_mlkit_selfie_segmentation: ^0.10.1` | `SelfieSegmenter` |
+| **Face Detection** | `google_mlkit_face_detection: ^0.13.2` | `FaceDetector` |
+
+All three use **on-device** models, meaning no network calls are made for ML processing. The models are bundled with the app.
+
+### 6.2 Central ML Service
+
+All ML Kit operations are centralized in `MLService` (`services/ml_service.dart`) as **static methods**. Each method:
+1. Creates a new ML Kit detector instance
+2. Processes the input image
+3. Closes the detector in a `finally` block (critical to avoid memory leaks)
+
+This create-process-close pattern ensures detectors are not kept alive unnecessarily.
+
+### 6.3 Image Labeling
+
+**Purpose:** Identifies objects, animals, places, activities, and more in a photograph.
+
+**Configuration:**
+```dart
+ImageLabeler(options: ImageLabelerOptions(confidenceThreshold: 0.5))
+```
+- Confidence threshold of 0.5 (50%) filters out low-confidence labels
+
+**Data flow:**
+```
+User picks image (camera/gallery)
+  → MLService.labelImage(imageFile)
+    → InputImage.fromFile(imageFile)
+    → ImageLabeler.processImage(inputImage)
+    → Returns List<ImageLabel> [label, confidence 0.0–1.0, index]
+  → UI: MlSectionHeader + ResultCard per label
+       (ResultCard shows label name, confidence %, LinearProgressIndicator)
+  → Save: encode labels as JSON → insert into SQLite
+```
+
+**Saved data format (JSON):**
+```json
+[
+  {"label": "Dog", "confidence": 0.92, "index": 0},
+  {"label": "Animal", "confidence": 0.87, "index": 1}
+]
+```
+
+### 6.4 Selfie Segmentation
+
+**Purpose:** Separates the person (foreground) from the background in a selfie-style image.
+
+**Configuration:**
+```dart
+SelfieSegmenter(
+  mode: SegmenterMode.single,    // Optimized for still images (not video stream)
+  enableRawSizeMask: true,       // Mask dimensions match raw input image
+)
+```
+
+**Data flow:**
+```
+User picks image
+  → MLService.segmentSelfie(imageFile)
+    → SelfieSegmenter.processImage() → SegmentationMask
+  → MLService.maskToOverlayImage(mask)
+    → For each pixel: if confidence > 0.5, render green (R:76, G:175, B:80)
+    → Convert RGBA pixels → ui.Image → PNG bytes (Uint8List)
+  → MLService.calculatePersonPercentage(mask)
+    → Count pixels with confidence > 0.5 / total pixels → percentage
+  → UI: Stack [original image + Opacity(55%) green overlay] (ClipRRect r=20)
+       Circular CircularProgressIndicator showing percentage
+  → Save: personPercentage stored as JSON in SQLite
+```
+
+**Mask overlay generation** is the most computationally interesting part of this project. The method:
+1. Iterates over all pixel confidences from the segmentation mask
+2. Creates a raw RGBA byte array (4 bytes per pixel)
+3. Marks person pixels as green with opacity proportional to confidence
+4. Uses `ui.decodeImageFromPixels` to convert raw bytes to a `ui.Image`
+5. Encodes to PNG via `image.toByteData(format: ui.ImageByteFormat.png)`
+
+**Saved data format (JSON):**
+```json
+{"personPercentage": 67.3}
+```
+
+### 6.5 Face Detection
+
+**Purpose:** Detects faces in an image with detailed attributes.
+
+**Configuration:**
+```dart
+FaceDetector(options: FaceDetectorOptions(
+  enableClassification: true,   // Smile & eye-open probabilities
+  enableLandmarks: true,        // Eye, nose, mouth, ear positions
+  enableContours: true,         // Face outline points
+  enableTracking: true,         // Unique face tracking IDs
+  performanceMode: FaceDetectorMode.accurate,
+))
+```
+
+All options are enabled for maximum data extraction. `FaceDetectorMode.accurate` is chosen because the app processes still images (not video), so latency is acceptable.
+
+**Data flow:**
+```
+User picks image
+  → MLService.detectFaces(imageFile)
+    → FaceDetector.processImage() → List<Face>
+  → UI: per face Card with:
+    - Color-coded header (orange icon bubble + "Face N" label)
+    - _InfoRow: bounding box position & dimensions
+    - _InfoRow: smiling probability
+    - _InfoRow: left/right eye open probability
+    - _InfoRow: head Euler angles Y (yaw) and Z (roll)
+    - _InfoRow: tracking ID (if available)
+  → Save: face count + per-face attributes as JSON in SQLite
+```
+
+**Saved data format (JSON):**
+```json
+{
+  "facesCount": 2,
+  "faces": [
+    {
+      "smiling": 0.85,
+      "leftEyeOpen": 0.95,
+      "rightEyeOpen": 0.92,
+      "headAngleY": -3.2,
+      "headAngleZ": 1.1
+    }
+  ]
+}
+```
+
+### 6.6 ML Kit — Design Decisions
+
+| Decision | Rationale |
+|---|---|
+| Static methods on `MLService` | ML Kit detectors are stateless and short-lived; no need for instance state |
+| Create-process-close pattern | Prevents native memory leaks from long-lived detector instances |
+| Confidence threshold 0.5 | Balanced between showing useful results and filtering noise |
+| `SegmenterMode.single` | App processes single images, not video streams |
+| `FaceDetectorMode.accurate` | Still-image context allows trading speed for precision |
+| Green overlay for segmentation | Visually clear way to show segmentation without complex compositing |
+
+---
+
+## 7. Photo Assistant Feature
+
+The **Photo Assistant** (`/photo-assistant`) is the flagship screen. It combines all three ML Kit analyses on a single photo and translates the raw ML output into human-readable quality feedback.
+
+### 7.1 Component Overview
+
+| Component | File | Role |
+|---|---|---|
+| `PhotoAssistantScreen` | `screens/photo_assistant_screen.dart` | UI: pick photo, show score, show tips, save |
+| `PhotoFeedbackService` | `services/photo_feedback_service.dart` | Pure logic: score computation + tip generation |
+| `PhotoTip` | `services/photo_feedback_service.dart` | Data class: `icon`, `message`, `TipType` |
+| `TipType` | `services/photo_feedback_service.dart` | Enum: `good`, `warning`, `suggestion`, `info` |
+
+### 7.2 Analysis Flow
+
+```
+User picks photo (camera or gallery, imageQuality: 85)
+  ↓
+Future.wait([
+  MLService.detectFaces(file),    // parallel
+  MLService.labelImage(file),     // parallel
+  MLService.segmentSelfie(file),  // parallel
+])
+  ↓
+PhotoFeedbackService.computeScore(faces, labels, personPercentage)
+PhotoFeedbackService.generateTips(faces, labels, personPercentage)
+  ↓
+UI: score card + tips list + save option
+```
+
+All three ML operations run **concurrently** via `Future.wait`, minimizing total analysis time.
+
+### 7.3 Score Algorithm (`PhotoFeedbackService.computeScore`)
+
+Penalty-based system starting at 100:
+
+| Condition | Penalty |
+|---|---|
+| No face detected | −20 |
+| Face detected but not smiling (< 30%) | −5 |
+| Eyes appear closed (< 40% open) | −10 |
+| Subject too small (person < 5% of frame) | −15 |
+| Subject too close (person ≥ 70% of frame) | −10 |
+| Dark/night labels detected | −15 |
+| Cluttered scene (>5 labels, >3 low confidence) | −5 |
+| **Bonus:** outdoor/sky/sunlight detected | +5 |
+
+Final score is clamped to `[0, 100]`.
+
+### 7.4 Tip Generation (`PhotoFeedbackService.generateTips`)
+
+Tips are categorized by `TipType` which the UI uses to apply color coding:
+
+| TipType | Color | Meaning |
+|---|---|---|
+| `good` | Green | Positive observation — something done well |
+| `warning` | Orange/Red | Problem that hurts photo quality |
+| `suggestion` | Blue | Optional improvement |
+| `info` | Grey | Neutral information |
+
+**Tip triggers:**
+- Face hidden/blurry (person in frame but no face) → `warning`
+- Smiling ≥ 60% → `good`; smiling < 30% → `suggestion`
+- Eyes closed → `warning`
+- Multiple faces → `info`
+- Subject too small → `warning`; too close → `suggestion`; well-framed → `good`
+- Dark/night scene → `warning`
+- Outdoor/natural lighting → `good`
+- Many scene objects detected → `info`
+
+### 7.5 Save Behavior
+
+The Photo Assistant saves to history using the same `DatabaseService` as individual ML screens. The saved JSON combines all three results:
+
+```json
+{
+  "score": 78,
+  "facesCount": 1,
+  "personPercentage": 42.3,
+  "labels": ["Person", "Smile", "Outdoor"],
+  "tips": ["Great framing", "Try smiling more"]
+}
+```
+
+---
+
+## 8. Dependencies & Packages
+
+### 8.1 Production Dependencies
+
+| Package | Version | Purpose | Where Used |
+|---|---|---|---|
+| `flutter` (SDK) | — | Core framework | Everywhere |
+| `flutter_localizations` (SDK) | — | Material/Cupertino l10n delegates | `app.dart` |
+| `cupertino_icons` | ^1.0.8 | iOS-style icons | UI elements |
+| `google_fonts` | ^6.2.1 | Inter typeface | `app.dart` ThemeData |
+| `firebase_core` | ^3.13.0 | Firebase initialization | `main.dart` |
+| `firebase_auth` | ^5.5.2 | Email/password authentication | `auth_service.dart`, auth screens |
+| `google_mlkit_image_labeling` | ^0.14.2 | On-device image labeling | `ml_service.dart`, labeling screen, photo assistant |
+| `google_mlkit_selfie_segmentation` | ^0.10.1 | Person/background separation | `ml_service.dart`, segmentation screen, photo assistant |
+| `google_mlkit_face_detection` | ^0.13.2 | Face detection with attributes | `ml_service.dart`, face screen, photo assistant |
+| `image_picker` | ^1.1.2 | Camera/gallery image selection | All ML feature screens |
+| `sqflite` | ^2.4.2 | Local SQLite database | `database_service.dart` |
+| `path` | ^1.9.1 | Path manipulation utilities | `database_service.dart` |
+| `path_provider` | ^2.1.5 | App documents directory | ML screens (image persistence) |
+| `flutter_local_notifications` | ^18.0.1 | Scheduled local notifications | `notification_service.dart` |
+| `provider` | ^6.1.5 | State management (ChangeNotifier) | `main.dart`, `app.dart`, feature screens |
+| `shared_preferences` | ^2.3.5 | Key-value persistent settings | `settings_provider.dart` |
+| `intl` | ^0.20.2 | Internationalization utilities | Generated l10n code |
+
+### 8.2 Dev Dependencies
+
+| Package | Version | Purpose |
+|---|---|---|
+| `flutter_test` (SDK) | — | Testing framework |
+| `flutter_lints` | ^6.0.0 | Recommended lint rules |
+
+### 8.3 Dependency Rationale
+
+- **`google_fonts`:** Provides the Inter typeface via CDN at dev time (bundled for release). Avoids shipping font files manually in `assets/`.
+- **No Firestore/RTDB:** All data is device-local. SQLite + SharedPreferences are sufficient and keep the app fully functional offline.
+- **No `firebase_messaging`:** Notifications are local reminders, not server-triggered.
+- **`provider` over Riverpod/Bloc:** A single settings provider doesn't justify the boilerplate of Bloc or the complexity of Riverpod.
+- **Separate `google_mlkit_*` packages:** Each ML Kit feature is a standalone package, keeping APK size manageable by including only used models.
+
+---
+
+## 9. Business Logic & Data Flow
+
+### 9.1 Application State Diagram
+
+```
+                     ┌─────────────┐
+                     │  App Start  │
+                     └──────┬──────┘
+                            │
+               ┌────────────┼────────────┐
+               ▼            ▼            ▼
+        Firebase Init  Settings Init  Notifications Init
+               │            │            │
+               └────────────┼────────────┘
+                            │
+                   SystemChrome (hide nav bar)
+                            │
+                            ▼
+                   ┌────────────────┐
+                   │ Auth Check     │
+                   │ (StreamBuilder)│
+                   └───┬────────┬──┘
+                  null │        │ User
+                       ▼        ▼
+               LandingScreen  HomeScreen
+                       │           │
+                  → LoginScreen    ├── PhotoAssistantScreen
+                                   ├── ImageLabelingScreen
+                                   ├── SelfieSegmentationScreen
+                                   └── FaceDetectionScreen
+                                           │
+                                   DatabaseService (SQLite)
+                                           │
+                                   HistoryScreen (view/delete)
+```
+
+### 9.2 ML Processing Flow (Generic)
+
+Every individual ML feature screen follows the same pattern:
+
+```dart
+1. User taps Camera or Gallery button
+2. ImagePicker opens native picker → returns XFile
+3. setState: _imageFile = File(path), _isProcessing = true
+4. MLService.<feature>(imageFile) → await async processing
+5. setState: store results, _isProcessing = false
+   → MlLoadingState widget disappears
+   → MlSectionHeader + results appear
+6. SoundService.playFeedback(settings)  // if enabled
+7. User optionally taps Save:
+   a. Copy image to app documents directory
+   b. Encode results as JSON string
+   c. Create ScanResult model
+   d. DatabaseService().insertResult(scanResult)
+   e. Show SnackBar confirmation
+```
+
+### 9.3 Photo Assistant Flow (Extended)
+
+```dart
+1. User taps Camera or Gallery button
+2. ImagePicker → XFile (imageQuality: 85)
+3. setState: reset all fields, _isAnalyzing = true
+4. Future.wait([detectFaces, labelImage, segmentSelfie]) → concurrent execution
+5. Compute personPercentage + maskOverlay from segmentation mask
+6. PhotoFeedbackService.computeScore(faces, labels, personPct) → int 0-100
+7. PhotoFeedbackService.generateTips(faces, labels, personPct) → List<PhotoTip>
+8. setState: store all results, _isAnalyzing = false
+9. SoundService.playFeedback(settings)
+10. User optionally taps Save → combined JSON → DatabaseService
+```
+
+### 9.4 Data Persistence
+
+**Two persistence mechanisms:**
+
+| Mechanism | Package | Data | Scope |
+|---|---|---|---|
+| **SharedPreferences** | `shared_preferences` | Settings (theme, locale, toggles) | Key-value pairs |
+| **SQLite** | `sqflite` | Scan results + image paths | Relational table |
+
+**SQLite Schema:**
+
+```sql
+CREATE TABLE scan_results (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL,          -- 'labeling', 'selfie_segmentation', 'face_detection'
+  imagePath TEXT NOT NULL,     -- Absolute path to saved image file
+  resultData TEXT NOT NULL,    -- JSON-encoded ML results
+  timestamp TEXT NOT NULL      -- ISO 8601 string
+);
+```
+
+**SharedPreferences Keys:**
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `isDarkMode` | `bool` | `false` | Dark theme enabled |
+| `locale` | `String` | `'fr'` | Language code |
+| `soundEnabled` | `bool` | `true` | System click sound on ML completion |
+| `vibrationEnabled` | `bool` | `true` | Haptic feedback on ML completion |
+| `notificationsEnabled` | `bool` | `true` | Daily reminder notification |
+
+### 9.5 Error Handling Strategy
+
+The project uses a consistent try/catch pattern in all async operations:
+
+```dart
+try {
+  // Async work (ML processing, auth, DB)
+} on SpecificException catch (e) {
+  // Show error in UI (SnackBar or inline text)
+} catch (e) {
+  // Generic fallback
+} finally {
+  if (mounted) setState(() => _isLoading = false);
+}
+```
+
+**Key patterns:**
+- `mounted` checks before `setState` or `ScaffoldMessenger` calls
+- Firebase auth errors display `FirebaseAuthException.message` inline
+- ML Kit errors show a generic error SnackBar
+- No global error boundary or crash reporting
+
+### 9.6 Image Lifecycle
+
+When a user saves an ML scan result, the image undergoes:
+
+```
+1. Original image (camera/gallery) → temporary path (cache dir)
+2. File.copy() → app documents directory (persistent)
+   filename: <type>_<millisecondsSinceEpoch>.jpg
+3. Persistent path stored in SQLite (imagePath column)
+4. On deletion: File.delete() + DB row delete
+5. On "clear all": iterate all results → delete files → clear table
+```
+
+---
+
+## 10. Security & Best Practices
+
+### 10.1 Authentication Security
+
+| Aspect | Implementation | Assessment |
+|---|---|---|
+| Password storage | Delegated to Firebase Auth (bcrypt-hashed server-side) | Secure |
+| Password minimum length | 6 characters (Firebase default) | Adequate for demo; production should require 8+ |
+| Email validation | Basic `contains('@')` check | Minimal; does not validate format fully |
+| Auth state management | `FirebaseAuth.authStateChanges()` stream | Correct reactive pattern |
+| Session persistence | Firebase Auth handles token refresh automatically | Secure |
+
+### 10.2 Data Security
+
+| Aspect | Status | Notes |
+|---|---|---|
+| SQLite encryption | Not implemented | Data at rest is unencrypted. For sensitive data, consider `sqflite_sqlcipher` |
+| Image storage | Plain files in app documents | Accessible via root/ADB. Acceptable for non-sensitive ML results |
+| Firebase API key | Hardcoded in `firebase_options.dart` | Normal for Firebase client SDKs — keys are restricted by Firebase Security Rules and app SHA |
+| No user data in Firestore | N/A | No cloud database means no server-side security rules needed |
+
+### 10.3 Input Validation
+
+| Location | Validation |
+|---|---|
+| Login form | Email format + password length |
+| Register form | Email + password length + password match |
+| Image picker | Null check (user cancels) |
+| ML results | Null/empty checks before saving |
+| History deletion | Confirmation dialog before delete |
+
+### 10.4 Potential Risks & Recommendations
+
+| Risk | Severity | Recommendation |
+|---|---|---|
+| No rate limiting on auth attempts | Low | Firebase Auth has built-in rate limiting; no client-side mitigation needed |
+| Hardcoded notification text in French | Low | Move to localization strings for consistency |
+| No input sanitization on email before trimming | Low | `trim()` is applied; SQL injection is N/A (parameterized queries via sqflite) |
+| Image files not cleaned up on app uninstall | Low | Android handles this — app documents dir is removed with the app |
+| No network error handling for auth | Medium | If offline, Firebase Auth throws — displayed as raw error message. Consider user-friendly offline detection |
+
+---
+
+## 11. Configuration & Environment
+
+### 11.1 Firebase Setup
+
+| Config File | Location | Generated By |
+|---|---|---|
+| `firebase.json` | Project root | FlutterFire CLI |
+| `firebase_options.dart` | `lib/` | FlutterFire CLI |
+| `google-services.json` | `android/app/` | Firebase Console / FlutterFire CLI |
+
+**To reconfigure Firebase for a new project:**
+```bash
+dart pub global activate flutterfire_cli
+flutterfire configure
+```
+
+### 11.2 Android Build Configuration
+
+| Property | Value | File |
+|---|---|---|
+| `applicationId` | `com.example.projet_ds` | `android/app/build.gradle.kts` |
+| `minSdk` | 24 (Android 7.0) | `android/app/build.gradle.kts` |
+| `targetSdk` | Flutter default | `android/app/build.gradle.kts` |
+| Java compatibility | 17 | `android/app/build.gradle.kts` |
+| Kotlin version | 2.2.20 | `android/settings.gradle.kts` |
+| AGP version | 8.11.1 | `android/settings.gradle.kts` |
+| Core library desugaring | `com.android.tools:desugar_jdk_libs:2.1.4` | `android/app/build.gradle.kts` |
+
+**`minSdk: 24`** is required by the ML Kit packages.
+
+**Core library desugaring** is enabled to support newer Java APIs on older Android versions (required by `flutter_local_notifications`).
+
+### 11.3 Localization Configuration
+
+Defined in `l10n.yaml`:
+```yaml
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+```
+
+**Supported locales:** `en`, `fr`, `ar` | **Default locale:** `fr`
+
+Arabic support enables RTL layout automatically via Flutter's built-in `GlobalWidgetsLocalizations`.
+
+### 11.4 Lint Configuration
+
+Uses `package:flutter_lints/flutter.yaml` — standard recommended Flutter linting rules with no custom overrides.
+
+---
+
+## 12. Performance & Optimization
+
+### 12.1 Observed Optimizations
+
+| Optimization | Location | Impact |
+|---|---|---|
+| **Singleton pattern** for DB & Notifications | `DatabaseService`, `NotificationService` | Single shared instance avoids repeated initialization |
+| **Create-close pattern** for ML detectors | `MLService` | Frees native memory immediately after use |
+| **`const` constructors** | Throughout widgets | Compile-time constant optimization |
+| **`mounted` checks** | All StatefulWidget async callbacks | Prevents setState on disposed widgets |
+| **Lazy database initialization** | `DatabaseService.database` getter | DB is created only when first accessed |
+| **`enableRawSizeMask: true`** | Selfie segmentation | Avoids a resize step in the segmentation pipeline |
+| **Concurrent ML execution** | `PhotoAssistantScreen` via `Future.wait` | Runs all three analyses in parallel; total time ≈ slowest single analysis |
+| **Reduced image quality** | `PhotoAssistantScreen._analyze` (imageQuality: 85) | Smaller file size for faster ML processing |
+| **Immersive system UI** | `main.dart` | Removes bottom nav bar chrome from the display area |
+
+### 12.2 Potential Bottlenecks
+
+| Area | Issue | Impact |
+|---|---|---|
+| **Selfie mask generation** | Iterates every pixel + creates `ui.Image` from raw bytes | O(width × height) — can be slow on high-resolution images |
+| **Image copying on save** | Full file copy to documents directory | I/O bound; large images may cause brief UI jank |
+| **History screen thumbnails** | `Image.file()` for each list item without caching | Scroll performance may degrade with many items |
+| **No image resizing** | Full-resolution images passed to ML Kit | Higher processing time on high-MP camera images |
+| **Synchronous `existsSync()`** | `imageFile.existsSync()` in history list builder | Blocks UI thread; should be async |
+
+### 12.3 Improvement Suggestions
+
+| Suggestion | Priority | Effort |
+|---|---|---|
+| **Resize images before ML processing** (e.g., max 1024px width) | High | Low |
+| **Cache thumbnails** in history screen using `Image.file` with fixed `cacheWidth` | Medium | Low |
+| **Use `Isolate.run`** for selfie mask pixel manipulation | Medium | Medium |
+| **Add pagination** to history screen for large datasets | Low | Medium |
+| **Replace `existsSync` with `exist()`** (async) in history screen | Low | Low |
+| **Preload ML models** on app start for faster first-scan experience | Low | Medium |
+| **Localize `PhotoFeedbackService` tip strings** | Medium | Low — requires passing `AppLocalizations` to the service |
+
+---
+
+## 13. Developer Guide
+
+### 13.1 Prerequisites
+
+- **Flutter SDK** ^3.10.7
+- **Android Studio** or **VS Code** with Flutter/Dart plugins
+- **Android device or emulator** (API 24+) — ML Kit does not work on desktop/web
+- **Firebase project** configured (or use the existing `projetmobile-abcd6`)
+
+### 13.2 Getting Started
+
+```bash
+# 1. Clone the repository
+git clone <repo-url>
+cd projet_ds
+
+# 2. Install dependencies
+flutter pub get
+
+# 3. Generate localization files (if l10n files are missing)
+flutter gen-l10n
+
+# 4. Run on a connected Android device/emulator
+flutter run
+```
+
+### 13.3 Building for Release
+
+```bash
+# Build APK (universal)
+flutter build apk
+
+# Build APK per ABI (recommended for distribution)
+flutter build apk --split-per-abi
+
+# Build App Bundle (for Google Play)
+flutter build appbundle
+```
+
+> **Note:** The release build currently uses debug signing keys. For production, configure a signing key in `android/app/build.gradle.kts`.
+
+### 13.4 Adding a New ML Kit Feature
+
+Follow this pattern to add a new ML Kit feature (e.g., text recognition):
+
+**Step 1: Add the package**
+```yaml
+google_mlkit_text_recognition: ^latest
+```
+
+**Step 2: Add the ML method to `MLService`**
+```dart
+static Future<RecognizedText> recognizeText(File imageFile) async {
+  final inputImage = InputImage.fromFile(imageFile);
+  final recognizer = TextRecognizer();
+  try {
+    return await recognizer.processImage(inputImage);
+  } finally {
+    recognizer.close();
+  }
+}
+```
+
+**Step 3: Create the screen** using the shared ML widgets:
+```dart
+// Buttons
+Row(children: [
+  Expanded(child: FilledButton.icon(onPressed: ..., icon: ..., label: ...)),
+  SizedBox(width: 12),
+  Expanded(child: FilledButton.tonal(onPressed: ..., child: ...)),
+])
+
+// States
+if (_imageFile == null && !_isProcessing) MlEmptyState(...)
+if (_isProcessing) MlLoadingState(message: l10n.processing)
+if (results != null) ... MlSectionHeader(...) + result widgets
+```
+
+**Step 4: Register the route in `app.dart`**
+
+**Step 5: Add a feature card to `HomeScreen`**
+
+**Step 6: Add localization strings** to all 3 `.arb` files
+
+**Step 7: Handle the new type in:**
+- `HistoryScreen._getTypeLabel()` and `_getResultSummary()`
+- `HistoryScreen._getTypeIcon()` and `_getTypeColor()`
+
+**Step 8: Optionally integrate into `PhotoAssistantScreen`** and `PhotoFeedbackService`
+
+### 13.5 Adding a New Language
+
+1. Create `lib/l10n/app_xx.arb` (copy `app_en.arb` as template)
+2. Translate all string values
+3. Add the locale to `app.dart`:
+   ```dart
+   supportedLocales: const [Locale('en'), Locale('fr'), Locale('ar'), Locale('xx')],
+   ```
+4. Add a `DropdownMenuItem` in `settings_screen.dart`
+5. Run `flutter gen-l10n`
+
+### 13.6 Key Concepts for New Developers
+
+1. **Auth gate pattern:** The `StreamBuilder` in `app.dart` reactively switches between `LandingScreen` and `HomeScreen`. Never manually navigate to `/home` after login — the stream handles it.
+
+2. **ML Kit lifecycle:** Always close ML Kit detectors after use. The `finally` block in `MLService` is critical. Failing to close detectors leaks native memory.
+
+3. **Image persistence:** Images from `ImagePicker` are temporary. Copy them to `getApplicationDocumentsDirectory()` before the user navigates away.
+
+4. **Settings reactivity:** `SettingsProvider` extends `ChangeNotifier`. Use `listen: false` for one-time reads in button callbacks.
+
+5. **Localization:** All user-visible strings must go through `AppLocalizations.of(context)!`. After modifying `.arb` files, run `flutter gen-l10n`.
+
+6. **Database is local-only:** No cloud sync. Each device has its own isolated scan history.
+
+7. **Notification text is hardcoded in French** in `notification_service.dart`. This is a known limitation — `NotificationService.scheduleDailyReminder()` runs outside the widget tree where `BuildContext` is unavailable.
+
+8. **Design system tokens:** Never hardcode colors in individual screens. Reference the design tokens from Section 4.1 and rely on `Theme.of(context).colorScheme` where possible.
+
+9. **`PhotoFeedbackService` is pure:** It has no Flutter imports beyond `Icons`. Keep it that way — all tip text is currently in English and should be localized in a future iteration by passing `AppLocalizations` as a parameter.
+
+### 13.7 Project File Quick Reference
+
+| Need to... | Go to... |
+|---|---|
+| Change Firebase config | `lib/firebase_options.dart` |
+| Change design tokens (colors) | `lib/app.dart` (`_primary`, `_secondary`, etc.) |
+| Change typography | `lib/app.dart` (`_buildTheme` → `textTheme`) |
+| Add a new screen | `lib/screens/` + register route in `app.dart` |
+| Add a new ML feature | `lib/services/ml_service.dart` |
+| Change photo score algorithm | `lib/services/photo_feedback_service.dart` |
+| Change DB schema | `lib/services/database_service.dart` (_onCreate) |
+| Add a setting | `lib/providers/settings_provider.dart` |
+| Add a translation | `lib/l10n/app_*.arb` files |
+| Change system UI behavior | `lib/main.dart` (SystemChrome call) |
+| Change minimum Android SDK | `android/app/build.gradle.kts` |
+| Add a dependency | `pubspec.yaml` |
+
+---
+
+## Appendix A: Complete Route Map
+
+```
+/                       → Auth gate (StreamBuilder)
+  ├── [unauthenticated] → LandingScreen
+  └── [authenticated]   → HomeScreen
+/login                  → LoginScreen
+/register               → RegisterScreen
+/forgot-password        → ForgotPasswordScreen
+/home                   → HomeScreen
+/photo-assistant        → PhotoAssistantScreen
+/image-labeling         → ImageLabelingScreen
+/selfie-segmentation    → SelfieSegmentationScreen
+/face-detection         → FaceDetectionScreen
+/history                → HistoryScreen
+/settings               → SettingsScreen
+/about                  → AboutScreen
+```
+
+## Appendix B: Localization Keys Count
+
+| Locale | Keys | File |
+|---|---|---|
+| English | 72+ | `lib/l10n/app_en.arb` |
+| French | 72+ | `lib/l10n/app_fr.arb` |
+| Arabic | 72+ | `lib/l10n/app_ar.arb` |
+
+## Appendix C: Data Model Reference
+
+### ScanResult
+
+```dart
+class ScanResult {
+  final int? id;          // Auto-increment PK (null on creation)
+  final String type;      // 'labeling' | 'selfie_segmentation' | 'face_detection'
+  final String imagePath; // Absolute filesystem path to saved image
+  final String resultData;// JSON-encoded ML results
+  final String timestamp; // ISO 8601 datetime string
+}
+```
+
+### PhotoTip
+
+```dart
+class PhotoTip {
+  final IconData icon;    // Material icon for the tip
+  final String message;   // Human-readable tip text (currently English)
+  final TipType type;     // good | warning | suggestion | info
+}
+```
+
+### TipType → UI Color Mapping
+
+| TipType | Semantic | Suggested Color |
+|---|---|---|
+| `good` | Positive observation | Green (`Colors.green`) |
+| `warning` | Quality problem | Orange/Red |
+| `suggestion` | Optional improvement | Blue (`Colors.blue`) |
+| `info` | Neutral fact | Grey |
+
+### SQLite ↔ Dart mapping
+
+| SQLite Column | Dart Field | Type |
+|---|---|---|
+| `id` | `id` | `int?` |
+| `type` | `type` | `String` |
+| `imagePath` | `imagePath` | `String` |
+| `resultData` | `resultData` | `String` |
+| `timestamp` | `timestamp` | `String` |
+
+
+---
+
+## Table of Contents
+
+1. [Project Overview](#1-project-overview)
+2. [Architecture](#2-architecture)
+3. [UI Layer (Flutter Widgets)](#3-ui-layer-flutter-widgets)
 4. [Firebase Integration](#4-firebase-integration)
 5. [ML Kit Integration](#5-ml-kit-integration)
 6. [Dependencies & Packages](#6-dependencies--packages)

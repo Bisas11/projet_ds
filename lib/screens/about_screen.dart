@@ -93,7 +93,7 @@ class AboutScreen extends StatelessWidget {
                 // Why On-Device AI section
                 _SectionHeader(
                   icon: Icons.memory_rounded,
-                  title: 'Why On-Device AI?',
+                  title: l10n.whyOnDeviceAi,
                   color: colorScheme.primary,
                 ),
                 const SizedBox(height: 10),
@@ -113,12 +113,12 @@ class AboutScreen extends StatelessWidget {
                 // AI Features section
                 _SectionHeader(
                   icon: Icons.auto_awesome_rounded,
-                  title: 'AI Features & What They Do',
+                  title: l10n.aiFeatures,
                   color: colorScheme.primary,
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Three Google ML Kit models work together to coach your photos:',
+                  l10n.mlKitModelsDesc,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurface.withOpacity(0.6),
                   ),

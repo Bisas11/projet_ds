@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
 import '../models/scan_result.dart';
+import 'history_detail_screen.dart';
 
 /// Screen that displays the history of saved ML Kit scan results.
 class HistoryScreen extends StatefulWidget {
@@ -102,6 +103,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
         return l10n.selfieSegmentation;
       case 'face_detection':
         return l10n.faceDetection;
+      case 'photo_assistant':
+        return l10n.photoReport;
       default:
         return type;
     }
@@ -119,6 +122,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       } else if (result.type == 'face_detection' && data is Map) {
         final count = data['facesCount'] ?? 0;
         return '$count ${l10n.facesDetected}';
+      } else if (result.type == 'photo_assistant' && data is Map) {
+        final score = data['score'] ?? 0;
+        return '${l10n.photoScore}: $score/100';
       }
     } catch (_) {}
     return '';
@@ -133,6 +139,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
         return Icons.crop_free_rounded;
       case 'face_detection':
         return Icons.face_rounded;
+      case 'photo_assistant':
+        return Icons.auto_awesome_rounded;
       default:
         return Icons.image_rounded;
     }
@@ -147,6 +155,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
         return const Color(0xFF0D9488);
       case 'face_detection':
         return const Color(0xFFF97316);
+      case 'photo_assistant':
+        return const Color(0xFF4F46E5);
       default:
         return Colors.grey;
     }
@@ -190,7 +200,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   child: Card(
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => HistoryDetailScreen(result: result),
+                          ),
+                        );
+                      },
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Row(

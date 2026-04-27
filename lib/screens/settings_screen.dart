@@ -70,7 +70,7 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           // ── Feedback ──────────────────────────────────────────────────
-          _SettingsSectionLabel(label: 'FEEDBACK'),
+          _SettingsSectionLabel(label: l10n.feedback.toUpperCase()),
           Card(
             child: Column(
               children: [
@@ -133,7 +133,7 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           // ── Notifications ─────────────────────────────────────────────
-          _SettingsSectionLabel(label: 'NOTIFICATIONS'),
+          _SettingsSectionLabel(label: l10n.notifications.toUpperCase()),
           Card(
             child: Column(
               children: [
@@ -169,7 +169,7 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           // ── Account ───────────────────────────────────────────────────
-          _SettingsSectionLabel(label: 'ACCOUNT'),
+          _SettingsSectionLabel(label: l10n.account.toUpperCase()),
           Card(
             child: ListTile(
               leading: const Icon(Icons.logout_rounded, color: Colors.red),

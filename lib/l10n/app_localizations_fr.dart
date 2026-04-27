@@ -285,4 +285,74 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get sceneContext => 'Contexte de la scène';
+
+  @override
+  String get feedback => 'Retour';
+
+  @override
+  String get account => 'Compte';
+
+  @override
+  String get accountInfo => 'Infos du compte';
+
+  @override
+  String get whyOnDeviceAi => 'Pourquoi l\'IA sur l\'appareil ?';
+
+  @override
+  String get aiFeatures => 'Fonctionnalités IA et leur rôle';
+
+  @override
+  String get mlKitModelsDesc =>
+      'Trois modèles Google ML Kit travaillent ensemble pour coacher vos photos :';
+
+  @override
+  String get displayName => 'Nom affiché';
+
+  @override
+  String get changePhoto => 'Changer la photo';
+
+  @override
+  String get saveChanges => 'Enregistrer les modifications';
+
+  @override
+  String get saving => 'Enregistrement…';
+
+  @override
+  String get nameRequired => 'Le nom ne peut pas être vide';
+
+  @override
+  String get segmentationResult => 'Résultat de segmentation';
+
+  @override
+  String get subjectTooSmall => 'Sujet trop petit — rapprochez-vous.';
+
+  @override
+  String get subjectTooClose => 'Sujet trop proche — reculez.';
+
+  @override
+  String get goodFraming => 'Bon cadrage — le sujet remplit bien le cadre.';
+
+  @override
+  String get subjectCoverage => 'Couverture du sujet';
+
+  @override
+  String get topSceneLabels => 'Principales étiquettes de scène';
+
+  @override
+  String get analysisSummary => 'Résumé de l\'analyse';
+
+  @override
+  String get scoreExcellent => 'Excellent';
+
+  @override
+  String get scoreGood => 'Bien';
+
+  @override
+  String get scoreFair => 'Passable';
+
+  @override
+  String get scoreNeedsWork => 'À améliorer';
+
+  @override
+  String get person => 'personne';
 }
