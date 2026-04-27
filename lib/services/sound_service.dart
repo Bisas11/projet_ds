@@ -1,40 +1,56 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import '../providers/settings_provider.dart';
 
 /// Service for sound effects and vibration feedback.
-/// Uses built-in Flutter APIs — no additional packages needed.
+/// Uses audioplayers to play real asset files from assets/sounds/.
 class SoundService {
-  /// Play feedback (sound + vibration) after ML processing completes.
-  /// Checks the user's settings before playing.
+  // Dedicated players — reusing avoids re-init overhead on repeated clicks.
+  static final _clickPlayer = AudioPlayer()..setReleaseMode(ReleaseMode.stop);
+  static final _startupPlayer = AudioPlayer()
+    ..setReleaseMode(ReleaseMode.release);
+
+  /// Play assets/sounds/click.mp3.
+  static Future<void> playClick() async {
+    await _clickPlayer.stop();
+    await _clickPlayer.play(AssetSource('sounds/click.mp3'));
+  }
+
+  /// Play assets/sounds/startup.mp3 once at app launch.
+  static Future<void> playStartup() async {
+    await _startupPlayer.play(AssetSource('sounds/startup.mp3'));
+  }
+
+  /// Play feedback (custom click sound + optional vibration) after ML processing.
   static Future<void> playFeedback(SettingsProvider settings) async {
     if (settings.soundEnabled) {
-      await SystemSound.play(SystemSoundType.click);
+      await playClick();
     }
     if (settings.vibrationEnabled) {
       await HapticFeedback.mediumImpact();
     }
   }
 
-  /// Play sound effect only.
+  /// Play click sound only (respects settings).
   static Future<void> playSound(SettingsProvider settings) async {
     if (settings.soundEnabled) {
-      await SystemSound.play(SystemSoundType.click);
+      await playClick();
     }
   }
 
-  /// Trigger vibration only.
+  /// Trigger vibration only (respects settings).
   static Future<void> vibrate(SettingsProvider settings) async {
     if (settings.vibrationEnabled) {
       await HapticFeedback.mediumImpact();
     }
   }
 
-  /// Directly play a click sound regardless of settings (for test).
+  /// Play click sound unconditionally (for the test button in settings).
   static Future<void> testSound() async {
-    await SystemSound.play(SystemSoundType.click);
+    await playClick();
   }
 
-  /// Directly trigger vibration regardless of settings (for test).
+  /// Trigger vibration unconditionally (for the test button in settings).
   static Future<void> testVibration() async {
     await HapticFeedback.heavyImpact();
   }

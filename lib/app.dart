@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -18,6 +17,8 @@ import 'screens/about_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/photo_assistant_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/splash_screen.dart';
+import 'screens/auth_gate.dart';
 
 /// Root widget: configures MaterialApp with theme, locale, routes, and auth gate.
 class VisionAIApp extends StatelessWidget {
@@ -207,26 +208,8 @@ class VisionAIApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
 
-      // ── Auth gate: show landing or home based on auth state ──
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          // Still checking auth state
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-
-          // User is signed in → skip landing, go straight to home
-          if (snapshot.hasData) {
-            return const HomeScreen();
-          }
-
-          // User is not signed in → show landing page
-          return const LandingScreen();
-        },
-      ),
+      // ── Splash screen on first launch, then auth gate ──
+      home: const SplashScreen(),
 
       // ── Named routes for in-app navigation ──
       routes: {

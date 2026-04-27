@@ -509,8 +509,9 @@ class _ScoreCard extends StatelessWidget {
   const _ScoreCard({required this.score, required this.color});
 
   Color _scoreColor() {
-    if (score >= 80) return const Color(0xFF16A34A);
-    if (score >= 60) return const Color(0xFFD97706);
+    if (score >= 81) return const Color(0xFF16A34A);
+    if (score >= 66) return const Color(0xFF4ADE80);
+    if (score >= 41) return const Color(0xFFD97706);
     return const Color(0xFFDC2626);
   }
 

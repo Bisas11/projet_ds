@@ -297,16 +297,17 @@ class _ScoreCard extends StatelessWidget {
   const _ScoreCard({required this.score, required this.l10n});
 
   Color get _color {
-    if (score >= 80) return Colors.green;
-    if (score >= 55) return Colors.orange;
+    if (score >= 81) return Colors.green;
+    if (score >= 66) return const Color(0xFF16A34A); // lighter green
+    if (score >= 41) return Colors.orange;
     return Colors.red;
   }
 
   String get _label {
-    if (score >= 80) return 'Excellent';
-    if (score >= 65) return 'Good';
-    if (score >= 50) return 'Fair';
-    return 'Needs Work';
+    if (score >= 81) return 'Excellent';
+    if (score >= 66) return 'Good';
+    if (score >= 41) return 'Average';
+    return 'Poor';
   }
 
   @override

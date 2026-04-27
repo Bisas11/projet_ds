@@ -5,6 +5,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/settings_provider.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../services/sound_service.dart';
 
 /// Settings screen: theme, language, sound, vibration, notifications, logout.
 class SettingsScreen extends StatelessWidget {
@@ -95,7 +96,7 @@ class SettingsScreen extends StatelessWidget {
                       icon: const Icon(Icons.volume_up, size: 16),
                       label: Text(l10n.testSound),
                       onPressed: settings.soundEnabled
-                          ? () => SystemSound.play(SystemSoundType.click)
+                          ? () => SoundService.testSound()
                           : null,
                     ),
                   ),
