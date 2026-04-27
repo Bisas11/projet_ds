@@ -26,11 +26,8 @@ void main() async {
     await notificationService.scheduleDailyReminder();
   }
 
-  // Enable edge-to-edge immersive mode (hide system nav bar until swiped)
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(systemNavigationBarColor: Colors.transparent),
-  );
+  // Enable immersive fullscreen — hides system nav bar until user swipes
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
   runApp(
     ChangeNotifierProvider.value(

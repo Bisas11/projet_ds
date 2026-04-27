@@ -11,6 +11,7 @@ import '../services/database_service.dart';
 import '../services/sound_service.dart';
 import '../providers/settings_provider.dart';
 import '../models/scan_result.dart';
+import '../widgets/ml_widgets.dart';
 
 /// Screen for the Selfie Segmentation ML Kit feature.
 /// Picks an image, segments the person from the background,
@@ -108,88 +109,158 @@ class _SelfieSegmentationScreenState extends State<SelfieSegmentationScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.selfieSegmentation)),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Image source buttons
+            // ── Pick source buttons ─────────────────────────────────
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton.icon(
-                  onPressed: () => _pickAndProcess(ImageSource.camera),
-                  icon: const Icon(Icons.camera_alt),
-                  label: Text(l10n.camera),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _isProcessing
+                        ? null
+                        : () => _pickAndProcess(ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt_rounded),
+                    label: Text(l10n.camera),
+                  ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () => _pickAndProcess(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library),
-                  label: Text(l10n.gallery),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.tonal(
+                    onPressed: _isProcessing
+                        ? null
+                        : () => _pickAndProcess(ImageSource.gallery),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.photo_library_rounded),
+                        const SizedBox(width: 8),
+                        Text(l10n.gallery),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // Display original image with mask overlay
+            // ── Image preview with mask overlay ───────────────────────
             if (_imageFile != null)
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Image.file(_imageFile!, height: 400, fit: BoxFit.contain),
-                    // Green mask overlay on top of the original
+                    Image.file(
+                      _imageFile!,
+                      height: 320,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
                     if (_maskOverlay != null)
                       Opacity(
-                        opacity: 0.6,
+                        opacity: 0.55,
                         child: Image.memory(
                           _maskOverlay!,
-                          height: 400,
-                          fit: BoxFit.contain,
+                          height: 320,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
                         ),
                       ),
                   ],
                 ),
               ),
-            const SizedBox(height: 16),
 
-            // Loading indicator
-            if (_isProcessing)
-              Column(
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 8),
-                  Text(l10n.processing),
-                ],
+            // ── Empty state ────────────────────────────────────────────
+            if (_imageFile == null && !_isProcessing)
+              MlEmptyState(
+                icon: Icons.crop_free_rounded,
+                message: l10n.tapPhotoToStart,
+                color: const Color(0xFF0D9488),
               ),
 
-            // Results
+            // ── Loading ────────────────────────────────────────────────
+            if (_isProcessing) MlLoadingState(message: l10n.processing),
+
+            // ── Results ─────────────────────────────────────────────────
             if (_personPercentage != null) ...[
+              const SizedBox(height: 20),
+              MlSectionHeader(
+                icon: Icons.person_rounded,
+                label: l10n.personDetected,
+                color: const Color(0xFF0D9488),
+              ),
+              const SizedBox(height: 10),
               Card(
-                child: ListTile(
-                  leading: const Icon(Icons.face, size: 40),
-                  title: Text(l10n.personDetected),
-                  subtitle: Text('${_personPercentage!.toStringAsFixed(1)}%'),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      // Circular percentage indicator
+                      SizedBox(
+                        width: 100,
+                        height: 100,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              value: _personPercentage! / 100,
+                              strokeWidth: 8,
+                              backgroundColor: const Color(
+                                0xFF0D9488,
+                              ).withOpacity(0.15),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Color(0xFF0D9488),
+                              ),
+                            ),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${_personPercentage!.toStringAsFixed(0)}%',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF0D9488),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        l10n.personDetected,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _saveResult,
-                icon: const Icon(Icons.save),
-                label: Text(l10n.saveResult),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _saveResult,
+                  icon: const Icon(Icons.save_rounded),
+                  label: Text(l10n.saveResult),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                ),
               ),
             ],
 
-            // No person detected
             if (_maskOverlay == null &&
                 !_isProcessing &&
                 _imageFile != null &&
                 _personPercentage == null)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Text(l10n.noResults),
-                ),
+              MlEmptyState(
+                icon: Icons.person_off_rounded,
+                message: l10n.noResults,
+                color: Colors.grey,
               ),
           ],
         ),

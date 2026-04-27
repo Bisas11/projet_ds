@@ -11,6 +11,7 @@ import '../services/database_service.dart';
 import '../services/sound_service.dart';
 import '../providers/settings_provider.dart';
 import '../models/scan_result.dart';
+import '../widgets/ml_widgets.dart';
 
 /// Screen for the Face Detection ML Kit feature.
 /// Picks an image, detects faces with landmarks, contours,
@@ -112,172 +113,181 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.faceDetection)),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Image source buttons
+            // ── Pick source buttons ─────────────────────────────────
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton.icon(
-                  onPressed: () => _pickAndProcess(ImageSource.camera),
-                  icon: const Icon(Icons.camera_alt),
-                  label: Text(l10n.camera),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _isProcessing
+                        ? null
+                        : () => _pickAndProcess(ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt_rounded),
+                    label: Text(l10n.camera),
+                  ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () => _pickAndProcess(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library),
-                  label: Text(l10n.gallery),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.tonal(
+                    onPressed: _isProcessing
+                        ? null
+                        : () => _pickAndProcess(ImageSource.gallery),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.photo_library_rounded),
+                        const SizedBox(width: 8),
+                        Text(l10n.gallery),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // Display original image
+            // ── Image preview ──────────────────────────────────────────
             if (_imageFile != null)
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
                 child: Image.file(
                   _imageFile!,
-                  height: 300,
-                  fit: BoxFit.contain,
+                  height: 280,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                 ),
               ),
-            const SizedBox(height: 16),
 
-            // Loading indicator
-            if (_isProcessing)
-              const Column(
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 8),
-                  Text('Processing...'),
-                ],
+            // ── Empty state ────────────────────────────────────────────
+            if (_imageFile == null && !_isProcessing)
+              MlEmptyState(
+                icon: Icons.face_rounded,
+                message: l10n.tapPhotoToStart,
+                color: const Color(0xFFF97316),
               ),
 
-            // Results
+            // ── Loading ────────────────────────────────────────────────
+            if (_isProcessing) MlLoadingState(message: l10n.processing),
+
+            // ── Results ─────────────────────────────────────────────────
             if (_faces != null && _faces!.isNotEmpty) ...[
-              Text(
-                '${_faces!.length} ${l10n.facesDetected}',
-                style: Theme.of(context).textTheme.titleMedium,
+              const SizedBox(height: 20),
+              MlSectionHeader(
+                icon: Icons.face_rounded,
+                label: '${_faces!.length} ${l10n.facesDetected}',
+                color: const Color(0xFFF97316),
               ),
-              const SizedBox(height: 8),
-
-              // Display each detected face
+              const SizedBox(height: 10),
               ..._faces!.asMap().entries.map((entry) {
                 final index = entry.key;
                 final face = entry.value;
                 final boundingBox = face.boundingBox;
-
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Face header
-                        Row(
-                          children: [
-                            const Icon(Icons.face, color: Colors.blue),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Face ${index + 1}',
-                              style: Theme.of(context).textTheme.titleSmall,
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFFF97316,
+                                  ).withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.face_rounded,
+                                  color: Color(0xFFF97316),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Face ${index + 1}',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          _InfoRow(
+                            icon: Icons.crop_square_rounded,
+                            label: 'Position',
+                            value:
+                                '(${boundingBox.left.toInt()}, ${boundingBox.top.toInt()}) '
+                                '${boundingBox.width.toInt()}x${boundingBox.height.toInt()}',
+                          ),
+                          _InfoRow(
+                            icon: Icons.sentiment_satisfied_alt_rounded,
+                            label: l10n.smilingProbability,
+                            value: _formatProbability(face.smilingProbability),
+                          ),
+                          _InfoRow(
+                            icon: Icons.visibility_rounded,
+                            label: l10n.leftEyeOpen,
+                            value: _formatProbability(
+                              face.leftEyeOpenProbability,
                             ),
-                          ],
-                        ),
-                        const Divider(),
-
-                        // Bounding box info
-                        _InfoRow(
-                          icon: Icons.crop_square,
-                          label: 'Position',
-                          value:
-                              '(${boundingBox.left.toInt()}, ${boundingBox.top.toInt()}) '
-                              '${boundingBox.width.toInt()}x${boundingBox.height.toInt()}',
-                        ),
-
-                        // Smiling probability
-                        _InfoRow(
-                          icon: Icons.sentiment_satisfied_alt,
-                          label: l10n.smilingProbability,
-                          value: _formatProbability(face.smilingProbability),
-                        ),
-
-                        // Left eye open
-                        _InfoRow(
-                          icon: Icons.visibility,
-                          label: l10n.leftEyeOpen,
-                          value: _formatProbability(
-                            face.leftEyeOpenProbability,
                           ),
-                        ),
-
-                        // Right eye open
-                        _InfoRow(
-                          icon: Icons.visibility,
-                          label: l10n.rightEyeOpen,
-                          value: _formatProbability(
-                            face.rightEyeOpenProbability,
-                          ),
-                        ),
-
-                        // Head angles
-                        if (face.headEulerAngleY != null)
                           _InfoRow(
-                            icon: Icons.rotate_left,
-                            label: l10n.headAngleY,
-                            value:
-                                '${face.headEulerAngleY!.toStringAsFixed(1)}°',
+                            icon: Icons.visibility_rounded,
+                            label: l10n.rightEyeOpen,
+                            value: _formatProbability(
+                              face.rightEyeOpenProbability,
+                            ),
                           ),
-                        if (face.headEulerAngleZ != null)
-                          _InfoRow(
-                            icon: Icons.rotate_right,
-                            label: l10n.headAngleZ,
-                            value:
-                                '${face.headEulerAngleZ!.toStringAsFixed(1)}°',
-                          ),
-
-                        // Tracking ID
-                        if (face.trackingId != null)
-                          _InfoRow(
-                            icon: Icons.tag,
-                            label: 'Tracking ID',
-                            value: '${face.trackingId}',
-                          ),
-                      ],
+                          if (face.headEulerAngleY != null)
+                            _InfoRow(
+                              icon: Icons.rotate_left_rounded,
+                              label: l10n.headAngleY,
+                              value:
+                                  '${face.headEulerAngleY!.toStringAsFixed(1)}°',
+                            ),
+                          if (face.headEulerAngleZ != null)
+                            _InfoRow(
+                              icon: Icons.rotate_right_rounded,
+                              label: l10n.headAngleZ,
+                              value:
+                                  '${face.headEulerAngleZ!.toStringAsFixed(1)}°',
+                            ),
+                          if (face.trackingId != null)
+                            _InfoRow(
+                              icon: Icons.tag_rounded,
+                              label: 'Tracking ID',
+                              value: '${face.trackingId}',
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 );
               }),
-              const SizedBox(height: 16),
-
-              ElevatedButton.icon(
-                onPressed: _saveResult,
-                icon: const Icon(Icons.save),
-                label: Text(l10n.saveResult),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _saveResult,
+                  icon: const Icon(Icons.save_rounded),
+                  label: Text(l10n.saveResult),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                ),
               ),
             ],
 
-            // No faces detected
             if (_faces != null && _faces!.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.face_retouching_off,
-                        size: 64,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(l10n.noFacesDetected),
-                    ],
-                  ),
-                ),
+              MlEmptyState(
+                icon: Icons.face_retouching_off_rounded,
+                message: l10n.noFacesDetected,
+                color: Colors.grey,
               ),
           ],
         ),

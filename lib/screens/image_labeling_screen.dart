@@ -12,6 +12,7 @@ import '../services/sound_service.dart';
 import '../providers/settings_provider.dart';
 import '../models/scan_result.dart';
 import '../widgets/result_card.dart';
+import '../widgets/ml_widgets.dart';
 
 /// Screen for the Image Labeling ML Kit feature.
 /// Allows picking an image from camera or gallery, then labels objects in it.
@@ -104,80 +105,105 @@ class _ImageLabelingScreenState extends State<ImageLabelingScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.imageLabeling)),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Image source buttons
+            // ── Pick source buttons ─────────────────────────────────
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton.icon(
-                  onPressed: () => _pickAndProcess(ImageSource.camera),
-                  icon: const Icon(Icons.camera_alt),
-                  label: Text(l10n.camera),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _isProcessing
+                        ? null
+                        : () => _pickAndProcess(ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt_rounded),
+                    label: Text(l10n.camera),
+                  ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () => _pickAndProcess(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library),
-                  label: Text(l10n.gallery),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.tonal(
+                    onPressed: _isProcessing
+                        ? null
+                        : () => _pickAndProcess(ImageSource.gallery),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.photo_library_rounded),
+                        const SizedBox(width: 8),
+                        Text(l10n.gallery),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // Display the picked image
+            // ── Image preview ──────────────────────────────────────────
             if (_imageFile != null)
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
                 child: Image.file(
                   _imageFile!,
-                  height: 300,
-                  fit: BoxFit.contain,
+                  height: 280,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                 ),
               ),
-            const SizedBox(height: 16),
 
-            // Loading indicator
-            if (_isProcessing)
-              Column(
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 8),
-                  Text(l10n.processing),
-                ],
+            // ── Empty state ────────────────────────────────────────────
+            if (_imageFile == null && !_isProcessing)
+              MlEmptyState(
+                icon: Icons.image_search_rounded,
+                message: l10n.tapPhotoToStart,
+                color: const Color(0xFF6366F1),
               ),
 
-            // Results
+            // ── Loading ────────────────────────────────────────────────
+            if (_isProcessing) MlLoadingState(message: l10n.processing),
+
+            // ── Results ─────────────────────────────────────────────────
             if (_labels != null && _labels!.isNotEmpty) ...[
-              Text(
-                '${l10n.labelsDetected}: ${_labels!.length}',
-                style: Theme.of(context).textTheme.titleMedium,
+              const SizedBox(height: 20),
+              MlSectionHeader(
+                icon: Icons.label_rounded,
+                label: '${l10n.labelsDetected}: ${_labels!.length}',
+                color: const Color(0xFF6366F1),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               ..._labels!.map(
-                (label) => ResultCard(
-                  title: label.label,
-                  subtitle:
-                      '${l10n.confidence}: ${(label.confidence * 100).toStringAsFixed(1)}%',
-                  icon: Icons.label_outline,
+                (label) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: ResultCard(
+                    title: label.label,
+                    subtitle:
+                        '${l10n.confidence}: ${(label.confidence * 100).toStringAsFixed(1)}%',
+                    icon: Icons.label_outline_rounded,
+                    confidence: label.confidence,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _saveResult,
-                icon: const Icon(Icons.save),
-                label: Text(l10n.saveResult),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _saveResult,
+                  icon: const Icon(Icons.save_rounded),
+                  label: Text(l10n.saveResult),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                ),
               ),
             ],
 
-            // No results
             if (_labels != null && _labels!.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Text(l10n.noResults),
-                ),
+              MlEmptyState(
+                icon: Icons.image_not_supported_rounded,
+                message: l10n.noResults,
+                color: Colors.grey,
               ),
           ],
         ),
