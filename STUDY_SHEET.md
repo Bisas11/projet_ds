@@ -188,10 +188,12 @@ double personPercentage = (personPixels / mask.confidences.length) * 100;
 ```
 lib/
 ├── main.dart               # Entry point — Firebase init, SystemChrome, app launch
-├── app.dart                # MaterialApp, ThemeData (design system), routes, auth gate
+├── app.dart                # MaterialApp, ThemeData (design system), routes
 ├── models/                 # Data models (ScanRecord for history)
 ├── providers/              # SettingsProvider (theme, language — ChangeNotifier)
 ├── screens/
+│   ├── splash_screen.dart          # Animated startup screen (fade + scale, 4.5s)
+│   ├── auth_gate.dart              # StreamBuilder auth gate (reached after splash)
 │   ├── landing_screen.dart         # Unauthenticated users — hero + CTA
 │   ├── home_screen.dart            # Main hub with feature cards + drawer
 │   ├── image_labeling_screen.dart  # Individual ML screen
@@ -199,11 +201,14 @@ lib/
 │   ├── selfie_segmentation_screen.dart # Individual ML screen
 │   ├── photo_assistant_screen.dart # Combined: all 3 ML + score + tips
 │   ├── history_screen.dart         # SQLite scan history browser
+│   ├── history_detail_screen.dart  # Full detail view for a saved scan result
+│   ├── profile_screen.dart         # View/edit display name, photo, reset password
 │   └── settings_screen.dart / about_screen.dart / ...
 ├── services/
 │   ├── ml_service.dart             # All ML Kit calls (static methods)
 │   ├── photo_feedback_service.dart # Scoring + tip generation (pure logic)
 │   ├── database_service.dart       # SQLite CRUD via sqflite
+│   ├── sound_service.dart          # Audio playback via audioplayers
 │   └── notification_service.dart   # Daily reminder (flutter_local_notifications)
 └── widgets/
     ├── ml_widgets.dart             # MlEmptyState, MlLoadingState, MlSectionHeader
@@ -220,8 +225,10 @@ lib/
 | **Providers** | App-wide state (settings) — no business logic |
 
 ### Auth gate (reactive)
+The auth gate was **extracted into its own widget** (`auth_gate.dart`) so the splash screen can navigate to it cleanly after finishing its animation. `app.dart` no longer hosts it inline.
+
 ```dart
-// In app.dart — no manual Navigator.pushReplacement needed
+// screens/auth_gate.dart
 StreamBuilder<User?>(
   stream: FirebaseAuth.instance.authStateChanges(),
   builder: (context, snapshot) {
@@ -250,7 +257,98 @@ Results optionally saved to SQLite via DatabaseService
 
 ---
 
-## 5. Implementation Details
+## 5. Splash Screen
+
+**File:** `lib/screens/splash_screen.dart`
+
+**What it does**
+- First screen the user sees on every app launch
+- Displays the app logo (`Icons.camera_enhance_rounded` in a translucent circle) and the name "PhotoCoach AI"
+- Plays `assets/sounds/startup.mp3` via `SoundService`
+- After **4.5 seconds** it performs a cross-fade `pushReplacement` to `AuthGate`
+
+**Animation**
+- Uses `AnimationController` with `SingleTickerProviderStateMixin`
+- Duration: 900ms; two concurrent animations driven by the same controller:
+  - `_fadeAnim` — `CurvedAnimation(curve: Curves.easeIn)` on opacity 0 → 1
+  - `_scaleAnim` — `Tween(0.80 → 1.0)` with `Curves.easeOutCubic` for the subtle scale bump
+- Both wrapped in `FadeTransition` + `ScaleTransition`
+
+**Navigation to AuthGate**
+```dart
+Timer(const Duration(milliseconds: 4500), () {
+  Navigator.of(context).pushReplacement(
+    PageRouteBuilder(
+      pageBuilder: (_, __, ___) => const AuthGate(),
+      transitionsBuilder: (_, animation, __, child) =>
+          FadeTransition(opacity: animation, child: child),
+      transitionDuration: const Duration(milliseconds: 600),
+    ),
+  );
+});
+```
+
+**Why `pushReplacement`?**
+The splash screen must not remain on the navigation stack — pressing back after login should not take the user back to the splash.
+
+---
+
+## 6. Sound System
+
+**Package:** `audioplayers ^6.1.0`
+**Files:** `assets/sounds/click.mp3`, `assets/sounds/startup.mp3`
+
+**Why not `SystemSound.play()`?**
+- `SystemSound` uses the OS default click — on Android this sound is **disabled by default** on most devices
+- `audioplayers` plays real asset files that are always present and always audible
+
+**SoundService design**
+```dart
+class SoundService {
+  // Dedicated players — reusing avoids re-init overhead
+  static final _clickPlayer = AudioPlayer()..setReleaseMode(ReleaseMode.stop);
+  static final _startupPlayer = AudioPlayer()..setReleaseMode(ReleaseMode.release);
+
+  static Future<void> playClick() async {
+    await _clickPlayer.stop();  // interrupt previous click if still playing
+    await _clickPlayer.play(AssetSource('sounds/click.mp3'));
+  }
+
+  static Future<void> playStartup() async {
+    await _startupPlayer.play(AssetSource('sounds/startup.mp3'));
+  }
+}
+```
+
+**Why two separate `AudioPlayer` instances?**
+- `_clickPlayer` uses `ReleaseMode.stop` — stopped and restarted each time, so rapid taps don't queue multiple plays
+- `_startupPlayer` uses `ReleaseMode.release` — played once then resources are released
+
+**Integration points**
+| Where | Method called |
+|---|---|
+| `SplashScreen.initState()` | `SoundService.playStartup()` |
+| ML result screens (all 4) | `SoundService.playFeedback(settings)` → calls `playClick()` |
+| Settings → Test Sound button | `SoundService.testSound()` → calls `playClick()` |
+
+---
+
+## 7. Profile System
+
+**File:** `lib/screens/profile_screen.dart`
+
+- Reads from `FirebaseAuth.instance.currentUser`
+- Lets users edit their **display name** → `user.updateDisplayName(name)`
+- Lets users pick a **profile photo** from the gallery via `image_picker`, copies it to the app documents directory, stores the local path as `user.updatePhotoURL(savedPath)`
+- **Reset password** → `FirebaseAuth.instance.sendPasswordResetEmail(email: email)` — sends a Firebase reset link
+- Photo is displayed as `FileImage` (local path), `NetworkImage` (URL), or initials fallback
+
+**Why store the photo path in `photoURL` instead of Firebase Storage?**
+No cloud storage dependency — photos remain on-device, no cost, no upload latency.
+
+---
+
+## 8. Implementation Details
 
 ### Key Flutter plugins
 | Plugin | Version | Purpose |
@@ -266,6 +364,7 @@ Results optionally saved to SQLite via DatabaseService
 | `provider` | latest | State management |
 | `flutter_local_notifications` | latest | Daily reminders |
 | `shared_preferences` | latest | Settings persistence |
+| `audioplayers` | ^6.1.0 | Custom audio files (click.mp3, startup.mp3) |
 
 ### Image capture / loading
 ```dart
@@ -308,7 +407,7 @@ await SystemChrome.setEnabledSystemUIMode(
 
 ---
 
-## 6. Image Scoring System
+## 9. Image Scoring System (Strict Mode)
 
 ### Logic overview
 `PhotoFeedbackService.computeScore()` takes three inputs (already computed by ML Kit):
@@ -320,28 +419,57 @@ await SystemChrome.setEnabledSystemUIMode(
 - **Alternative (weighted sum):** Complex to calibrate, hard to explain what changed the score
 - **Penalty-based from 100:** Intuitive (like a school grade), each deduction maps to a specific problem, easy to extend, easy to justify to the user with a matching tip
 - Score is clamped to `[0, 100]` — can never go negative or exceed 100
+- **Philosophy:** Penalise flaws aggressively; do NOT reward neutral conditions. A genuinely good selfie should be hard to achieve. Average images should land ~40–55, not 80+.
 
-### Penalty/bonus table
+### Score bands
+| Range | Label |
+|---|---|
+| 0–40 | Poor |
+| 41–65 | Average |
+| 66–80 | Good |
+| 81–100 | Excellent (rare) |
+
+### Penalty table (current strict values)
 | Condition | Check | Score Δ |
 |---|---|---|
-| No face detected | `faces.isEmpty` | **−20** |
-| No smile | `smilingProbability < 0.3` | −5 |
-| Eyes closed | `leftEyeOpen < 0.4 \|\| rightEyeOpen < 0.4` | −10 |
-| Subject too small | `personPercentage < 5%` | −15 |
-| Subject too close | `personPercentage ≥ 70%` | −10 |
-| Dark/night scene | label contains `"dark"` or `"night"` | −15 |
-| Cluttered scene | `labels.length > 5 && lowConfidenceCount > 3` | −5 |
-| Outdoor/good light | label contains `"sky"`, `"outdoor"`, or `"sunlight"` | **+5** |
+| No person at all | `faces.isEmpty && personPct ≤ 8%` | **−50** |
+| Face hidden / side profile | `faces.isEmpty && personPct > 8%` | **−40** |
+| Both eyes fully closed | `leftOpen < 0.3 && rightOpen < 0.3` | **−25** |
+| One eye closed / blinking | `leftOpen < 0.3 \|\| rightOpen < 0.3` | −15 |
+| Squinting | `< 0.6` on either eye | −8 |
+| Strong side profile | `headY.abs() > 35°` | **−25** |
+| Notably turned away | `headY.abs() > 20°` | −15 |
+| Slight head turn | `headY.abs() > 12°` | −7 |
+| Head tilted/rolled (heavy) | `headZ.abs() > 25°` | −12 |
+| Head tilted/rolled (light) | `headZ.abs() > 15°` | −6 |
+| Flat / unhappy expression | `smiling < 0.2` | −12 |
+| Neutral expression | `smiling < 0.4` | −6 |
+| ML Kit low confidence | `smilingProbability == null && leftEyeOpen == null` | −10 |
+| Multiple faces | `faces.length > 1` | −10 |
+| Subject barely visible | `personPct < 3%` | **−25** |
+| Subject too small | `personPct < 8%` | −18 |
+| Subject slightly small | `personPct < 15%` | −8 |
+| Face fills frame (cropped) | `personPct ≥ 80%` | **−20** |
+| Too close | `personPct ≥ 65%` | −10 |
+| Framing unknown | `personPercentage == null` | −8 |
+| Dark / night scene | label contains `"dark"`, `"night"`, `"darkness"` | −20 |
+| Strong shadows | label contains `"shadow"` | −10 |
+| Cluttered scene | `labels.length > 6 && lowConfidenceCount > 4` | −10 |
+| Busy background | `labels.length > 8` | −5 |
+
+> There are **no bonuses** — good conditions simply avoid penalties.
 
 ### Example score walkthrough
-Scenario: portrait taken at night, no smile, subject well-framed (15% of frame)
+Scenario: portrait taken at night, neutral expression, slight head turn (14°), subject well-framed (20% of frame)
 - Start: **100**
-- Face detected ✓ → no penalty
-- Smile < 0.3 → **−5** → 95
-- Eyes open ✓ → no penalty
-- 15% framing ✓ → no penalty
-- Dark scene label detected → **−15** → 80
-- **Final score: 80/100**
+- Face detected ✓, eyes open ✓
+- Head turn 14° → `headY.abs() > 12°` → **−7** → 93
+- Neutral expression (smiling ≈ 0.3) → **−6** → 87
+- 20% framing ✓ (ideal range) → no penalty
+- Dark scene label detected → **−20** → 67
+- **Final score: 67/100 — "Good"**
+
+Same scenario with old (lenient) system: 100 − 5 (no smile) − 15 (dark) = **80 — was overrating**
 
 ### Tips system
 Each detected problem generates a `PhotoTip` with:
@@ -374,11 +502,20 @@ Tips are generated independently of the score — a tip can exist even if the sc
 **Q: How does the segmentation mask become a visible green overlay?**
 > The `mask.confidences` (Float32List) is iterated pixel-by-pixel; pixels with confidence > 0.5 are set to green RGBA; the raw pixel array is encoded to PNG via `ui.decodeImageFromPixels` → `ui.Image` → `toByteData(png)`.
 
-**Q: Why is the scoring penalty-based?**
-> Intuitive, transparent, each deduction maps to one specific detected problem, easy to explain and extend.
+**Q: Why is the scoring penalty-based and why was it made stricter?**
+> Penalty-based is intuitive — each deduction maps to one specific problem. It was made stricter because the original system gave high scores to mediocre photos (e.g. a dark, unsmiling, slightly-turned face still scored 80). The new system removes all bonuses and adds graduated penalties for head orientation, eye state, framing, and lighting. Neutral images now land ~40–55.
 
 **Q: How does authentication work without route guards?**
-> A `StreamBuilder<User?>` on `FirebaseAuth.instance.authStateChanges()` reactively rebuilds the widget tree — logged out shows `LandingScreen`, logged in shows `HomeScreen`.
+> `AuthGate` holds a `StreamBuilder<User?>` on `FirebaseAuth.instance.authStateChanges()` — it reactively rebuilds whenever auth state changes. The splash screen navigates to `AuthGate` after 4.5s; `AuthGate` then shows `HomeScreen` (logged in) or `LandingScreen` (logged out).
+
+**Q: Why is the splash screen using `pushReplacement` instead of `push`?**
+> So the splash screen is removed from the navigation stack — pressing back after login would otherwise return the user to the splash screen.
+
+**Q: Why use `audioplayers` instead of `SystemSound.play()`?**
+> `SystemSound` uses the OS default click sound which is disabled by default on most Android devices. `audioplayers` plays real MP3 asset files bundled with the app, so sounds are always audible regardless of device settings.
+
+**Q: How does the profile photo system work without cloud storage?**
+> The picked image is copied to the app's documents directory (`getApplicationDocumentsDirectory()`). The local file path is then stored as `user.photoURL` via `FirebaseAuth.updatePhotoURL()`. No cloud storage is used — photos remain on-device.
 
 **Q: Where is scan history stored and why not Firebase?**
 > SQLite via `sqflite` — local storage, works offline, no read/write costs, history is device-private.
