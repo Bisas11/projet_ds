@@ -14,11 +14,9 @@ import 'screens/face_detection_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/about_screen.dart';
-import 'screens/landing_screen.dart';
 import 'screens/photo_assistant_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/splash_screen.dart';
-import 'screens/auth_gate.dart';
 
 /// Root widget: configures MaterialApp with theme, locale, routes, and auth gate.
 class VisionAIApp extends StatelessWidget {

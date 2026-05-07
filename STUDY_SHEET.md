@@ -488,6 +488,278 @@ Tips are generated independently of the score — a tip can exist even if the sc
 
 ---
 
+## 10. Settings Screen
+
+### Overview
+
+The Settings screen is a **pure UI screen** — it has no business logic of its own. Its only job is to:
+1. Read the current state from `SettingsProvider`
+2. Display that state via widgets (toggles, dropdowns)
+3. Call `SettingsProvider` setters when the user changes something
+
+It is a `StatelessWidget`. All state lives in `SettingsProvider`, not in the screen itself.
+
+**How it is reached**
+- Accessed from the navigation drawer in `HomeScreen` via a named route: `Navigator.pushNamed(context, '/settings')`
+- No arguments are passed — the screen reads what it needs directly from `Provider.of<SettingsProvider>(context)`
+
+**Layout structure**
+```
+Scaffold
+└── AppBar (title: "Settings")
+└── ListView (scrollable, padding 16h/12v)
+    ├── _SettingsSectionLabel("THEME")     ← small coloured uppercase label
+    ├── Card
+    │   ├── SwitchListTile  (Dark mode)
+    │   └── ListTile + DropdownButton  (Language)
+    ├── _SettingsSectionLabel("FEEDBACK")
+    ├── Card
+    │   ├── SwitchListTile + TextButton  (Sound)
+    │   └── SwitchListTile + TextButton  (Vibration)
+    ├── _SettingsSectionLabel("NOTIFICATIONS")
+    ├── Card
+    │   └── SwitchListTile + TextButton  (Notifications)
+    └── _SettingsSectionLabel("ACCOUNT")
+        └── Card → ListTile (Logout, red)
+```
+
+**`_SettingsSectionLabel`** is a private widget (defined at the bottom of the file) that renders a small uppercase label in the primary colour — used to group related settings visually.
+
+---
+
+### Dark Mode — Theme Switching
+
+**How Flutter themes work**
+- `MaterialApp` accepts three theme-related parameters:
+  - `theme:` — the light `ThemeData`
+  - `darkTheme:` — the dark `ThemeData`
+  - `themeMode:` — a `ThemeMode` enum value (`light`, `dark`, or `system`) that picks which one to use
+- When `themeMode` changes, **Flutter rebuilds the entire widget tree** with the new colours automatically — no manual colour lookup is needed anywhere
+
+**In this app**
+```dart
+// app.dart — MaterialApp wired to the provider
+final settings = Provider.of<SettingsProvider>(context);
+
+return MaterialApp(
+  themeMode: settings.themeMode,          // reads from provider
+  theme: _buildTheme(Brightness.light),   // pre-built light ThemeData
+  darkTheme: _buildTheme(Brightness.dark), // pre-built dark ThemeData
+  ...
+);
+```
+
+**The toggle widget**
+```dart
+// settings_screen.dart
+SwitchListTile(
+  title: Text(l10n.darkMode),
+  secondary: Icon(Icons.brightness_6_rounded, color: colorScheme.primary),
+  value: settings.themeMode == ThemeMode.dark,  // true if currently dark
+  onChanged: (value) {
+    settings.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+  },
+),
+```
+- `SwitchListTile` = a `ListTile` with a built-in `Switch` on the right
+- The `value` converts the enum to a boolean for the switch
+- `onChanged` converts it back and calls the provider setter
+
+**How the state is stored**
+- `SettingsProvider` (a `ChangeNotifier`) holds `ThemeMode _themeMode`
+- When `setThemeMode()` is called:
+  1. Updates the in-memory field
+  2. Persists to disk: `_prefs?.setBool('isDarkMode', mode == ThemeMode.dark)`
+  3. Calls `notifyListeners()` → `MaterialApp` rebuilds with the new `themeMode`
+- On next launch, `init()` reads `SharedPreferences` and restores the saved value
+
+**Full data flow**
+```
+User flips Switch
+  → onChanged(value) called
+  → settings.setThemeMode(ThemeMode.dark)
+    → _themeMode updated in memory
+    → SharedPreferences.setBool('isDarkMode', true)
+    → notifyListeners()
+      → MaterialApp rebuilds
+        → themeMode: ThemeMode.dark
+          → Flutter uses darkTheme everywhere
+```
+
+---
+
+### Language Selection — Localization
+
+**How Flutter localization works**
+- Flutter's localization system uses **ARB files** (Application Resource Bundle — a JSON-like format) as the source of truth for translations
+- The `flutter_localizations` package provides built-in Material/Cupertino widget translations (dialog buttons, date pickers, etc.)
+- A custom `AppLocalizations` class is **auto-generated** from the ARB files by running `flutter gen-l10n`
+
+**ARB files in this project**
+```
+lib/l10n/
+├── app_en.arb   ← English strings
+├── app_fr.arb   ← French strings
+└── app_ar.arb   ← Arabic strings
+```
+Each file is a JSON object where keys are string IDs and values are the translated text:
+```json
+// app_en.arb
+{ "settings": "Settings", "darkMode": "Dark Mode" }
+
+// app_fr.arb
+{ "settings": "Paramètres", "darkMode": "Mode sombre" }
+```
+
+**How `MaterialApp` is wired up**
+```dart
+// app.dart
+MaterialApp(
+  locale: settings.locale,                    // active language
+  supportedLocales: const [
+    Locale('en'), Locale('fr'), Locale('ar'),
+  ],
+  localizationsDelegates: const [
+    AppLocalizations.delegate,                 // our custom strings
+    GlobalMaterialLocalizations.delegate,      // Material widget strings
+    GlobalWidgetsLocalizations.delegate,       // text direction (RTL for Arabic)
+    GlobalCupertinoLocalizations.delegate,     // iOS widget strings
+  ],
+  ...
+)
+```
+- `locale` tells Flutter which language to use right now
+- `supportedLocales` is the whitelist — Flutter will not accept any locale not in this list
+- `GlobalWidgetsLocalizations` is important for **Arabic (RTL)** — it flips the layout direction automatically
+
+**Using translations in code**
+```dart
+final l10n = AppLocalizations.of(context)!;
+Text(l10n.settings);   // returns "Settings", "Paramètres", or "إعدادات"
+```
+
+**The language dropdown**
+```dart
+// settings_screen.dart
+DropdownButton<String>(
+  value: settings.locale.languageCode,   // 'en', 'fr', or 'ar'
+  items: [
+    DropdownMenuItem(value: 'fr', child: Text(l10n.french)),
+    DropdownMenuItem(value: 'en', child: Text(l10n.english)),
+    DropdownMenuItem(value: 'ar', child: Text(l10n.arabic)),
+  ],
+  onChanged: (value) {
+    if (value != null) settings.setLocale(Locale(value));
+  },
+),
+```
+
+**How the state is stored**
+- `SettingsProvider` holds `Locale _locale`
+- `setLocale(Locale locale)` updates the field, persists `locale.languageCode` as a string to `SharedPreferences`, calls `notifyListeners()`
+- `MaterialApp` rebuilds with the new `locale` → Flutter picks the matching ARB translations → all `AppLocalizations.of(context)!` calls return the new language instantly
+
+**Full data flow**
+```
+User selects "English" from dropdown
+  → settings.setLocale(Locale('en'))
+    → _locale = Locale('en')
+    → SharedPreferences.setString('locale', 'en')
+    → notifyListeners()
+      → MaterialApp rebuilds
+        → locale: Locale('en')
+          → AppLocalizations resolves to app_en.arb
+            → all Text(l10n.xxx) rebuild with English strings
+```
+
+---
+
+### Notifications
+
+**What they are**
+- Notifications are messages shown by the OS in the notification tray, outside the app
+- This app uses **local notifications** — generated entirely on the device, no server involved
+
+**Local vs push notifications**
+| | Local | Push (Firebase Messaging) |
+|---|---|---|
+| Origin | Scheduled by the app itself | Sent from a server (Firebase) |
+| Requires internet? | No | Yes |
+| Use case | Daily reminders, timers | Breaking news, chat messages |
+| Plugin | `flutter_local_notifications` | `firebase_messaging` |
+
+> This app uses **local notifications only** — no Firebase Messaging.
+
+**Plugin: `flutter_local_notifications`**
+- Must be initialised once on startup (`NotificationService().init()` in `main.dart`)
+- On Android 13+, the plugin requests the `POST_NOTIFICATIONS` runtime permission automatically
+
+**How the daily reminder works**
+```dart
+// notification_service.dart
+await _plugin.periodicallyShow(
+  0,                          // notification ID (0 = single slot, overrides itself)
+  'PhotoCoach AI',            // title
+  'Don\'t forget to use the app today!',  // body
+  RepeatInterval.daily,       // fires once per day
+  NotificationDetails(
+    android: AndroidNotificationDetails(
+      'daily_reminder',        // channel ID (required on Android 8+)
+      'Daily Reminder',        // channel name shown in system settings
+      importance: Importance.defaultImportance,
+    ),
+  ),
+  androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+);
+```
+- `androidScheduleMode: inexactAllowWhileIdle` allows Android to fire the notification even in low-power (Doze) mode, at an approximate time — saves battery
+
+**The notification toggle in settings**
+```dart
+SwitchListTile(
+  value: settings.notificationsEnabled,
+  onChanged: (value) => settings.setNotificationsEnabled(value),
+),
+```
+Inside `SettingsProvider.setNotificationsEnabled()`:
+```dart
+void setNotificationsEnabled(bool value) async {
+  _notificationsEnabled = value;
+  _prefs?.setBool('notificationsEnabled', value);
+  if (value) {
+    await notificationService.scheduleDailyReminder();  // start scheduling
+  } else {
+    await notificationService.cancelAll();              // remove all scheduled
+  }
+  notifyListeners();
+}
+```
+- Enabling → calls `scheduleDailyReminder()` which registers the repeating notification with the OS
+- Disabling → calls `cancelAll()` which tells the OS to remove all pending notifications for this app
+
+**Channel ID (Android 8+)**
+- Android requires all notifications to belong to a **channel** — a category the user can configure individually in system settings
+- The channel `'daily_reminder'` with name `'Daily Reminder'` is created automatically on first use
+- Users can mute or customise this channel from the Android notification settings, independently of the in-app toggle
+
+---
+
+### Sound & Vibration
+
+**Sound toggle**
+- `settings.soundEnabled` is a `bool` in `SettingsProvider`, persisted to `SharedPreferences`
+- `SoundService.playFeedback(settings)` checks `settings.soundEnabled` before playing — if false, it skips the audio call entirely
+- A "Test Sound" `TextButton` is shown inline and is **disabled** (`onPressed: null`) when sound is off
+
+**Vibration toggle**
+- `settings.vibrationEnabled` controls whether haptic feedback fires
+- `SoundService.vibrate(settings)` calls `HapticFeedback.heavyImpact()` (from `flutter/services.dart`) only if enabled
+- "Test Vibration" button calls `HapticFeedback.heavyImpact()` directly
+
+**`HapticFeedback`** is a Flutter built-in (no extra plugin) — it sends a haptic event to the device's vibration motor. `heavyImpact` produces a strong, short buzz.
+
+---
+
 ## Quick-Reference: Possible Exam Questions
 
 **Q: How does the app run all three ML operations at once?**
@@ -519,3 +791,24 @@ Tips are generated independently of the score — a tip can exist even if the sc
 
 **Q: Where is scan history stored and why not Firebase?**
 > SQLite via `sqflite` — local storage, works offline, no read/write costs, history is device-private.
+
+**Q: What is `SettingsProvider` and why is it used?**
+> A `ChangeNotifier` class registered at the root of the widget tree via `Provider`. It holds all user preferences (theme, locale, sound, vibration, notifications) in memory and persists them to `SharedPreferences`. Screens read from it and call its setters — they never manage settings state themselves.
+
+**Q: How does `ThemeMode` work and how does the dark mode toggle affect the whole app?**
+> `MaterialApp` takes `themeMode`, `theme` (light), and `darkTheme` (dark). When `setThemeMode(ThemeMode.dark)` is called in the provider, `notifyListeners()` fires, `MaterialApp` rebuilds, and Flutter automatically uses `darkTheme` everywhere — no manual colour lookup in any screen.
+
+**Q: What is an ARB file?**
+> Application Resource Bundle — a JSON-like file (one per language) containing string key–value pairs. Flutter's `gen-l10n` tool reads them and generates a Dart class (`AppLocalizations`) with typed accessors like `l10n.settings`. Screens call `AppLocalizations.of(context)!` to get the right language.
+
+**Q: How does switching language dynamically work at runtime?**
+> `settings.setLocale(Locale('en'))` updates `_locale` in `SettingsProvider` and calls `notifyListeners()`. `MaterialApp.locale` is bound to `settings.locale`, so it rebuilds. Flutter then resolves `AppLocalizations` against `app_en.arb` and every `l10n.xxx` call returns the English string — without restarting the app.
+
+**Q: What is the difference between local and push notifications?**
+> Local notifications are scheduled by the app itself on the device — no server or internet needed. Push notifications come from a remote server (e.g. Firebase Cloud Messaging) and require internet. This app uses local notifications only, via `flutter_local_notifications`.
+
+**Q: What is a notification channel and why is it required?**
+> On Android 8+, every notification must belong to a channel (a named category). Channels let users control notification behaviour per category in system settings. The channel `'daily_reminder'` is created automatically by the plugin on first use.
+
+**Q: Why is `androidScheduleMode: inexactAllowWhileIdle` used?**
+> It allows Android to deliver the daily reminder even when the device is in Doze (low-power) mode. The delivery time is approximate rather than exact — a deliberate trade-off to save battery.
